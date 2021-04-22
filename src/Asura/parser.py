@@ -7,196 +7,13 @@ import zlib
 # For saving me more work then I'd already done
 from typing import List
 
+from src.Asura.enums import ArchiveType, FileType
+from src.Asura.error import assertion_message
+from src.Asura.io import read_int, is_null, read_utf8_to_terminal, read_utf16, read_bytes_to_nonterminal, read_utf8, \
+    read_padding
+from src.Asura.models import FileHeader, ZlibHeader, HTextFile, ResourceFile
+
 BYTE_ORDER = "little"  # ASR uses little endian
-
-class ArchiveType(Enum):
-    Folder = "Asura   "
-    ZLib = "AsuraZlb"
-    Zbb = "AsuraZbb"
-
-    def encode(self) -> bytes:
-        return self.value.encode()
-
-    @classmethod
-    def decode(cls, b: bytes) -> 'ArchiveType':
-        v = b.decode()
-        try:
-            return enum_value_to_enum(v, ArchiveType)
-        except KeyError:
-            allowed = ', '.join([f"'{e.value}'" for e in ArchiveType])
-            raise ValueError(assertion_message("Decoding Archive Type", f"Any [{allowed}]", v))
-
-    def __str__(self):
-        return self.name
-
-
-class FileType(Enum):
-    RESOURCE = "RSCF"
-    SUBTITLE = "fmvs"
-    FONT_INFO = "FNFO"
-    FONT_DESCRIPTION = "FNTK"
-    FONT = "FONT"
-    H_TEXT = "HTXT"
-    L_TEXT = "LTXT"
-    P_TEXT = "PTXT"
-    T_TEXT = "TTXT"
-    RESOURCE_LIST = "RSFL"
-    RUDE_WORDS_LIST = "RUDE"
-    SOUND = "ASTS"
-    Unknown = "DLET"
-
-    def encode(self) -> bytes:
-        return self.value.encode()
-
-    @classmethod
-    def decode(cls, b: bytes) -> 'FileType':
-        v = b.decode()
-        try:
-            return enum_value_to_enum(v, FileType)
-        except KeyError:
-            allowed = ', '.join([f"'{e.value}'" for e in FileType])
-            raise ValueError(assertion_message("Decoding File Type", f"Any [{allowed}]", v))
-
-    @classmethod
-    def read(cls, f: BytesIO) -> 'FileType':
-        return cls.decode(f.read(4))
-
-    def write(self, f: BytesIO):
-        return f.write(self.encode())
-
-    def __str__(self):
-        return self.name
-
-
-@dataclass
-class FileHeader:
-    type: FileType
-    length: int
-    version: int
-    resrver: bytes
-
-    def __str__(self):
-        return f"AsuraHeader(type={self.type}, length={self.length}, version={self.version})"
-
-
-@dataclass
-class ZlibHeader:
-    compressed_length: int
-    decompressed_length: int
-
-@dataclass
-class FolderFile:
-    header:FileHeader
-
-@dataclass
-class HTextFile(FolderFile):
-    @dataclass
-    class HText:
-        key: str
-        text: str
-        unknown: bytes
-
-    key: str
-    unknown: bytes
-    descriptions: List[HText]
-
-    @property
-    def size(self):
-        return len(self.descriptions)
-
-@dataclass
-class ResourceFile(FolderFile):
-    file_type_id_maybe:int
-    file_id_maybe:int
-    name:str
-    data:bytes
-
-    @property
-    def size(self):
-        return len(self.data)
-
-
-def read_to_word_boundary(file: BytesIO, word_size: int) -> bytes:
-    pos = file.tell()
-    to_read = word_size - (pos % word_size)
-    # Dont read when at word boundary
-    if to_read == word_size:
-        return bytes()
-    return file.read(to_read)
-
-
-def read_padding(file: BytesIO, word_size: int) -> None:
-    padding =  read_to_word_boundary(file, word_size)
-    for b in padding:
-        if b != 0x00:
-            raise ValueError(assertion_message("Unexpected Value In Padding!",bytes([0x00]*len(padding)),padding))
-
-
-def is_null(b: bytes) -> bool:
-    for byte in b:
-        if byte != 0x00:
-            return False
-    return True
-
-
-def read_int(f: BytesIO, byteorder: str = None, *, signed: bool = None) -> int:
-    b = f.read(4)
-    return int.from_bytes(b, byteorder=byteorder, signed=signed)
-
-
-# n is in charachters; not bytes
-def read_utf16(f: BytesIO, n: int, byteorder: str = None) -> str:
-    b = f.read(n * 2)
-    if byteorder is None:
-        return b.decode("utf-16")
-    else:
-        if byteorder == "little":
-            return b.decode("utf-16le")
-        elif byteorder == "big":
-            return b.decode("utf-16be")
-        else:
-            raise ValueError(f"Invalid byteorder: '{byteorder}'")
-
-
-# n is in charachters; not bytes
-def read_utf8(f: BytesIO, n: int) -> str:
-    return f.read(n).decode()
-
-
-def read_utf8_to_terminal(f: BytesIO, buffer_size: int = 1024) -> str:
-    start = f.tell()
-    while True:
-        end = f.tell()
-        buffer = f.read(buffer_size)
-        for i, b in enumerate(buffer):
-            if b == 0x00:
-                true_end = end + i
-                f.seek(start, 0)
-                uft8 = read_utf8(f, true_end - start)
-                f.read(1)  # read 0x00
-                return uft8
-
-def read_bytes_to_nonterminal(f: BytesIO, buffer_size: int = 1024):
-    while True:
-        start = f.tell()
-        buffer = f.read(buffer_size)
-        if len(buffer) == 0:
-            return
-        for i, b in enumerate(buffer):
-            if b != 0x00:
-                true_start = start + i
-                f.seek(true_start, 0)
-                return
-
-
-def enum_value_to_enum(value, enum):
-    d = {e.value: e for e in enum}
-    return d[value]
-
-
-
-def assertion_message(msg, expected, recieved):
-    return f"{msg}\n\tExpected: '{expected}'\n\tRecieved: '{recieved}'"
 
 
 class Asura:
@@ -274,14 +91,14 @@ class Asura:
         return result
 
     @staticmethod
-    def _read_rcsf(file:BytesIO) -> ResourceFile:
-        result = ResourceFile(None,None,None,None,None)
+    def _read_rcsf(file: BytesIO) -> ResourceFile:
+        result = ResourceFile(None, None, None, None, None)
         # 4 - File Type ID?
-        result.file_type_id_maybe = read_int(file,BYTE_ORDER)
+        result.file_type_id_maybe = read_int(file, BYTE_ORDER)
         # 4 - File ID?
-        result.file_id_maybe = read_int(file,BYTE_ORDER)
+        result.file_id_maybe = read_int(file, BYTE_ORDER)
         # 4 - File Data Length
-        size = read_int(file,BYTE_ORDER)
+        size = read_int(file, BYTE_ORDER)
         # X - Filename
         result.name = read_utf8_to_terminal(file)
         # 1 - null Filename Terminator
@@ -291,6 +108,7 @@ class Asura:
         # X - File Data
         result.data = file.read(size)
         return result
+
     @classmethod
     def parse_folder(cls, file: BytesIO):
         header = cls._read_file_header(file)

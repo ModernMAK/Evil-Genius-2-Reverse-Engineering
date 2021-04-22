@@ -1,8 +1,9 @@
-
-src/*.dds
-src/*.tga
-src/*.tif
+# Ignore all files in dump; these are files extracted from ASURA Resource files files
+dump/*
+# Ignore virtual environment
 venv/*
-__pycache__/*
+__pycache__/
+# Ignore Pycharm
 .idea/*
-*.exe
+# Ignore 3rd party software
+depends/*
