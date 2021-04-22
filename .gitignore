@@ -1,0 +1,8 @@
+
+src/*.dds
+src/*.tga
+src/*.tif
+venv/*
+__pycache__/*
+.idea/*
+*.exe
