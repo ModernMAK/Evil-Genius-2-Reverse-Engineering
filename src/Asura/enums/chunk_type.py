@@ -1,8 +1,8 @@
 from enum import Enum
 from io import BytesIO
 
-from src.Asura.enums.common import enum_value_to_enum
-from src.Asura.error import assertion_message
+from src.asura.enums.common import enum_value_to_enum
+from src.asura.error import assertion_message
 
 
 class ChunkType(Enum):
@@ -10,8 +10,8 @@ class ChunkType(Enum):
     RESOURCE = "RSCF"
     # SUBTITLE = "fmvs"
     FONT_INFO = "FNFO"
-    # FONT_DESCRIPTION = "FNTK"
-    # FONT = "FONT"
+    FONT_DESCRIPTION = "FNTK"
+    FONT = "FONT"
     H_TEXT = "HTXT"
     # L_TEXT = "LTXT"
     # P_TEXT = "PTXT"
@@ -23,6 +23,19 @@ class ChunkType(Enum):
     TEXTURES_MAYBE = "TXST"
     UNKNOWN_DLET = "DLET"
     UNKNOWN_RVBP = "RVBP"
+    UNKNOWN_ENTI = "ENTI"
+    UNKNOWN_ARNM = "ARNM"
+    UNKNOWN_DYMG = "DYMG"
+    UNKNOWN_DLLT = "DLLT"
+    UNKNOWN_DLIG = "DLIG"
+    UNKNOWN_DLLN = "DLLN"
+    UNKNOWN_DLEV = "DLEV"
+    UNKNOWN_SMXG = "SMXG"
+    UNKNOWN_dtvs = "dtvs"
+    UNKNOWN_ATIG = "ATIG"
+    UNKNOWN_stsy = "stsy"
+    UNKNOWN_ttsy = "ttsy"
+
 
     EG_Base = "bsnf"
 

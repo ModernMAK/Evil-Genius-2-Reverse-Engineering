@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from ..config import BYTE_ORDER, WORD_SIZE
 from ..enums import ChunkType
-from ..io import read_int, write_int
+from ..mio import read_int, write_int
 
 
 @dataclass
@@ -20,6 +20,7 @@ class ChunkHeader:
     @staticmethod
     def read(file) -> 'ChunkHeader':
         file_type = ChunkType.read(file)
+        # EOF is a special case; it's an incomplete header
         if file_type == ChunkType.EOF:
             return ChunkHeader(type=file_type)
         size = read_int(file, byteorder=BYTE_ORDER)
@@ -27,9 +28,11 @@ class ChunkHeader:
         reserved = file.read(WORD_SIZE)
         return ChunkHeader(file_type, size, version, reserved)
 
-    def write(self, file):
-        self.type.write(file)
-        if self.type !=  ChunkType.EOF:
-            write_int(file, self.length)
-            write_int(file, self.version)
-            file.write(self.reserved)
+    def write(self, file) -> int:
+        written = 0
+        written += self.type.write(file)
+        if self.type != ChunkType.EOF:
+            written += write_int(file, self.length)
+            written += write_int(file, self.version)
+            written += file.write(self.reserved)
+        return written

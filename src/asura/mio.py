@@ -1,9 +1,7 @@
 from io import BytesIO, BufferedIOBase
-from typing import List, Optional, Union
-
-from .config import INT32_SIZE, WORD_SIZE
+from typing import List
+from .config import WORD_SIZE, INT32_SIZE
 from .error import assertion_message
-
 
 class BinaryIO:
     def __init__(self, stream: BufferedIOBase, *, byteorder: str = None, signed: bool = None):

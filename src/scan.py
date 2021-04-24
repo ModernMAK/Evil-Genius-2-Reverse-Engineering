@@ -1,14 +1,13 @@
 import os
 from os import walk, stat
 from os.path import join, dirname, exists, splitext
-
-from src.Asura.enums import *
-from src.Asura.models import HTextChunk, ResourceChunk
-from src.Asura.parser import Asura
+from src.asura.models import HTextChunk, ResourceChunk, DebugChunk
+from src.asura.parser import Asura
 
 dump_root = "dump"
 
-bad_exts = ["exe","dll","txt","webm"]
+bad_exts = ["exe", "dll", "txt", "webm"]
+
 
 def enforce_dir(path: str):
     try:
@@ -30,57 +29,46 @@ def check_all(root):
 
 def check_one(path, pretty_path=None):
     # print(pretty_path or path)
-
-    def do(t):
-        if isinstance(t, HTextChunk):
-            pass
-            # print("\t", end="")
-            # print(t)
-        elif isinstance(t, ResourceChunk):
-            name = t.name.lstrip("/\\").rstrip("\0")
-            dump_path = join(dump_root, name)
-            enforce_dir(dirname(dump_path))
-            # print("\t" + dump_path)
-            if exists(dump_path):
-                if stat(dump_path).st_size == len(t.data):
-                    # print("\t\tExists (Skipping...)")
-                    return  # Ignore if exists and size match
-            with open(dump_path, 'wb') as w:
-                w.write(t.data)
-        else:
-            # print("\tNot Parsed")
-            pass
-    try:
-        with open(path, 'rb') as f:
+    with open(path, 'rb') as f:
+        try:
             r = Asura.parse(f)
-            if r is None:
-                return
-            for c in r.chunks:
-                do(c)
+        except Exception as e:
+            print(pretty_path or path)
+            print("\tERROR: ", end="")
+            print(e)
+            return
 
-        # b = read_asura(path)
-        # v = b[0:8]
-        # values.add(v)
-        # con += 1
-    except Exception as e:
-        print(pretty_path or path)
-        print("\tERROR: ", end="")
-        print(e)
-        pass
+        if r is None:
+            return
+        for i, chunk in enumerate(r.chunks):
+            if isinstance(chunk, HTextChunk):
+                # Dump as json
+                continue
+            elif isinstance(chunk, ResourceChunk):
+                name = chunk.name.lstrip("/\\").rstrip("\0")
+                dump_path = join(dump_root, name)
+                enforce_dir(dirname(dump_path))
+                if exists(dump_path):
+                    if stat(dump_path).st_size == len(chunk.data):
+                        continue  # Ignore if exists and size match
+                with open(dump_path, 'wb') as w:
+                    w.write(chunk.data)
+            elif isinstance(chunk, DebugChunk):
+                name = pretty_path.replace("...\\", "")
+                dump_path = join(dump_root, "unknown", name) + f" [{i}]." + chunk.header.type.value
+                enforce_dir(dirname(dump_path))
+                # print(dump_path)
+                if exists(dump_path):
+                    if stat(dump_path).st_size == len(chunk.data):
+                        continue  # Ignore if exists and size match
+                with open(dump_path, 'wb') as w:
+                    w.write(chunk.data)
+                    print(dump_path)
 
 
 if __name__ == "__main__":
-    root = r"G:\Clients\Steam\Launcher\steamapps\common\Evil Genius 2"
-    # check_one(rf"{root}\Text\PC\MINIONTRAIT\miniontrait.asr_en")
-    # check_one(rf"{root}\Text\PC\SCHEME\scheme.asr_en")
-    # check_all(rf"{root}\Text\PC\FOJ")
-    # check_one(rf"{root}\envs\lair_tropical_03_default.pc.pc.sounds")
-    # check_all(rf"{root}\envs")lair_tropical_03_default.pc.pc.sounds
-    # check_all(rf"{root}\textures")
+    launcher_root = r"G:\Clients\Steam\Launcher"
+    steam_root = r"C:\Program Files (x86)\Steam"
+    root = fr"{steam_root}\steamapps\common\Evil Genius 2"
 
     check_all(root)
-    # check_one(rf"{root}\Text\PC\ROOM\room.asr_en")
-    # check_one(rf"{root}\textures\thepatchblob.pc_textures")
-    # check_one(rf"{root}\textures\theblob.pc_textures")
-    # check_one(rf"{root}\textures\theblob1.pc_textures")
-    # check_one(rf"{root}\textures\theblob2.pc_textures")

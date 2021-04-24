@@ -6,12 +6,14 @@ from .archive_chunk import ArchiveChunk
 from .archive import Archive
 from .archive_chunk import ArchiveChunk
 from .zlib_header import ZlibHeader
+from .debug_chunk import DebugChunk
 
 __all__ = [
     "Archive",
     "ArchiveChunk",
     "ChunkHeader",
     "HTextChunk",
+    "DebugChunk",
     "ResourceChunk",
     "ZlibHeader"
 ]

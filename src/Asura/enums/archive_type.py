@@ -26,7 +26,7 @@ class ArchiveType(Enum):
     def read(cls, f: BytesIO) -> 'ArchiveType':
         return cls.decode(f.read(8))
 
-    def write(self, f: BytesIO):
+    def write(self, f: BytesIO) -> int:
         return f.write(self.encode())
 
     def __str__(self):

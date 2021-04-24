@@ -1,14 +1,12 @@
 import zlib
 from io import BytesIO
-from typing import List, Optional
+from typing import Optional
 
-from src.Asura.config import BYTE_ORDER, WORD_SIZE
-from src.Asura.enums import ArchiveType, ChunkType
-from src.Asura.error import assertion_message
-from src.Asura.io import read_int, is_null, check_end_of_file
-from src.Asura.models import ResourceChunk, HTextChunk, ZlibHeader, ChunkHeader, Archive, ArchiveChunk
-
-
+from src.asura.config import BYTE_ORDER, WORD_SIZE
+from src.asura.enums import ArchiveType, ChunkType
+from src.asura.error import assertion_message
+from src.asura.mio import read_int, is_null
+from src.asura.models import ResourceChunk, HTextChunk, ZlibHeader, ChunkHeader, Archive, ArchiveChunk, DebugChunk
 # Thank you http://wiki.xentax.com/index.php/ASR_ASURA_RSCF
 # For saving me more work then I'd already done
 
@@ -55,7 +53,9 @@ class Asura:
         elif header.type == ChunkType.RESOURCE:
             result = ResourceChunk.read(file)
         else:
-            raise NotImplementedError(header.type)
+            result = DebugChunk.read(file, header.remaining_length)
+        # else:
+        #     raise NotImplementedError(header.type)
 
         if result is not None:
             result.header = header

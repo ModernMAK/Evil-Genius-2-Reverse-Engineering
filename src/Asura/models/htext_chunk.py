@@ -5,7 +5,7 @@ from typing import List
 from .archive_chunk import ArchiveChunk
 from ..config import BYTE_ORDER, WORD_SIZE
 from ..enums import LangCode
-from ..io import read_int, read_utf16, read_utf8_to_terminal, read_utf8, parse_utf8_string_list, \
+from ..mio import read_int, read_utf16, read_utf8_to_terminal, read_utf8, parse_utf8_string_list, \
     write_int, write_size_utf16, write_utf8
 
 
@@ -39,7 +39,7 @@ class HTextChunk(ArchiveChunk):
         return len(self.descriptions)
 
     @classmethod
-    def read(cls, file: BytesIO, version: int = None):
+    def read(cls, file: BytesIO, version: int = None) -> 'HTextChunk':
         if version is not None and version != cls.CURRENT_VERSION:
             raise NotImplementedError
 
@@ -55,21 +55,6 @@ class HTextChunk(ArchiveChunk):
             size = read_int(file, BYTE_ORDER)
             part.text = read_utf16(file, size, BYTE_ORDER)
 
-        # key is the name file? THIS METHODOLOGY IS WRONG, see ***
-        # I cant find any information describing it in the file; but if it's always the filename; (or the parent folder) you wouldn't have to.
-        #   Looking at an htext for sniper elite, I assume it's actually the parent folder; as SE's filename matches the htext
-        #   Whereas EG's filename is lowercase; but the key is uppercase
-        #       As a side note; the most important part is that the length of the name matches; not that case does
-        #       I'll document this as a HACK, but it may be intended behaviour
-        # key_from_fname, _ = splitext(basename(file.name))
-        # ***
-        #   Why this is wrong?
-        #       I was under the assumption that the string was entered; then padded to the next word boundary, then an int was written
-        #       This appears to be wrong, just by examining files; and I believe the culprit is quite simply
-        #           I'm performing padding at absolute word boundaries.
-        #               I should be padding at relative boundaries; starting at the first char read
-        #   By reading to the terminal; and then reading to the padded word length relative to the start; the key section now works
-
         result.key = read_utf8_to_terminal(file, buffer_size=WORD_SIZE * 4, word_size=WORD_SIZE)
 
         size = read_int(file, BYTE_ORDER)
@@ -80,22 +65,24 @@ class HTextChunk(ArchiveChunk):
 
         return result
 
-    def write(self, file: BytesIO, write_header: bool = True):
+    def write(self, file: BytesIO, write_header: bool = True) -> int:
+        written = 0
         if write_header:
-            self.header.write(file)
+            written += self.header.write(file)
 
         # Read string count
-        write_int(file, self.size, BYTE_ORDER)
-        file.write(self.word_a)
-        file.write(self.data_byte_length)
-        self.language.write(file)
+        written += write_int(file, self.size, BYTE_ORDER)
+        written += file.write(self.word_a)
+        written += file.write(self.data_byte_length)
+        written += self.language.write(file)
         keys = []
         for part in self.descriptions:
-            file.write(part.unknown)
-            write_size_utf16(file, part.text, BYTE_ORDER)
+            written += file.write(part.unknown)
+            written += write_size_utf16(file, part.text, BYTE_ORDER)
             keys.append(part.key)
 
-        write_utf8(file, self.key, WORD_SIZE)
+        written += write_utf8(file, self.key, WORD_SIZE)
 
         key_str = "\0".join(keys) + "\0"
-        write_utf8(file, key_str)
+        written += write_utf8(file, key_str)
+        return written

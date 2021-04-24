@@ -3,7 +3,7 @@ from io import BytesIO
 
 from .archive_chunk import ArchiveChunk
 from ..config import BYTE_ORDER
-from ..io import read_int, read_utf8_to_terminal, read_padding, write_int, write_utf8, write_padding
+from ..mio import read_int, read_utf8_to_terminal, read_padding, write_int, write_utf8, write_padding
 
 
 @dataclass
