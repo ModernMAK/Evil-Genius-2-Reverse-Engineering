@@ -1,11 +1,12 @@
 import zlib
 from io import BytesIO
+from typing import List, Optional
 
 from src.Asura.config import BYTE_ORDER, WORD_SIZE
-from src.Asura.enums import ArchiveType, FileType
+from src.Asura.enums import ArchiveType, ChunkType
 from src.Asura.error import assertion_message
-from src.Asura.io import read_int, is_null, read_utf8_to_terminal, read_padding, check_end_of_file
-from src.Asura.models import ChunkHeader, ZlibHeader, ResourceChunk, HTextChunk
+from src.Asura.io import read_int, is_null, check_end_of_file
+from src.Asura.models import ResourceChunk, HTextChunk, ZlibHeader, ChunkHeader, Archive, ArchiveChunk
 
 
 # Thank you http://wiki.xentax.com/index.php/ASR_ASURA_RSCF
@@ -38,42 +39,33 @@ class Asura:
                 assertion_message("Decompression ~ Size Failed", header.decompressed_length, len(decompressed)))
         return decompressed
 
-    @staticmethod
-    def _read_rcsf(file: BytesIO) -> ResourceChunk:
-        result = ResourceChunk(None, None, None, None, None)
-        # 4 - File Type ID?
-        result.file_type_id_maybe = read_int(file, BYTE_ORDER)
-        # 4 - File ID?
-        result.file_id_maybe = read_int(file, BYTE_ORDER)
-        # 4 - File Data Length
-        size = read_int(file, BYTE_ORDER)
-        # X - Filename
-        result.name = read_utf8_to_terminal(file)
-        # 1 - null Filename Terminator
+    @classmethod
+    def _parse_chunk(cls, file: BytesIO) -> Optional[ArchiveChunk]:
+        header = ChunkHeader.read(file)
+        # Always return EOF
+        if header.type == ChunkType.EOF:
+            return ArchiveChunk(header)
 
-        # 0-3 - null Padding to a multiple of 4 bytes
-        read_padding(file)
-        # X - File Data
-        result.data = file.read(size)
+        # Setup seeking; garuntees the file is read properly
+        result: ArchiveChunk = None
+        start = file.tell()
+        next = start + header.remaining_length
+        if header.type == ChunkType.H_TEXT:
+            result = HTextChunk.read(file, header.version)
+        elif header.type == ChunkType.RESOURCE:
+            result = ResourceChunk.read(file)
+        else:
+            raise NotImplementedError(header.type)
+
+        if result is not None:
+            result.header = header
+            assert file.tell() == next, "CHUNK READ MISMATCH"
+        if result is None:
+            raise Exception("Result should have been assigned! Please check all code paths!")
         return result
 
     @classmethod
-    def _parse_chunk(cls, file: BytesIO):
-        header = ChunkHeader.read(file)
-        if header.type == FileType.H_TEXT:
-            htext = HTextChunk.read(file, header.version)
-            htext.header = header
-            return htext
-        elif header.type == FileType.RESOURCE:
-            resource = cls._read_rcsf(file)
-            resource.header = header
-            return resource
-
-        # DEFAULT: Jump to end of file
-        file.seek(0, 2)
-
-    @classmethod
-    def parse(cls, file: BytesIO):
+    def parse(cls, file: BytesIO) -> Archive:
         archive_type = ArchiveType.read(file)
         # print(archive_type)
         if archive_type == ArchiveType.ZLib:
@@ -89,13 +81,12 @@ class Asura:
             decompressed = cls._zlib_decompress(file, zbb_header)
             print(decompressed)
         elif archive_type == ArchiveType.Folder:
-            parts = []
+            archive = Archive(archive_type, [])
             while True:
                 part = cls._parse_chunk(file)
                 if part is None:
                     break
-
-                parts.append(part)
-                if check_end_of_file(file):
+                if part.header.type == ChunkType.EOF:
                     break
-            return parts
+                archive.chunks.append(part)
+            return archive

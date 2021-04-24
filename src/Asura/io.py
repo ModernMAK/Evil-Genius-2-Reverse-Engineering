@@ -1,9 +1,49 @@
-from io import BytesIO
-from typing import List
+from io import BytesIO, BufferedIOBase
+from typing import List, Optional, Union
 
-from .config import INT_SIZE, WORD_SIZE
+from .config import INT32_SIZE, WORD_SIZE
 from .error import assertion_message
 
+
+class BinaryIO:
+    def __init__(self, stream: BufferedIOBase, *, byteorder: str = None, signed: bool = None):
+        self.stream: BufferedIOBase = stream
+        self.default_byteorder = byteorder
+        self.default_signed = signed
+
+    def __get_byteorder(self, override: str = None):
+        return override or self.default_byteorder
+
+    def __get_signed(self, override: str = None):
+        return override or self.default_signed
+
+    # INT
+    def read_int(self, byteorder: str = None, *, signed: bool = None) -> int:
+        return int.from_bytes(self.stream.read(INT32_SIZE),
+                              byteorder=self.__get_byteorder(byteorder),
+                              signed=self.__get_signed(signed))
+
+    def write_int(self, value: int, byteorder: str = None, *, signed: bool = None):
+        return self.stream.write(int.to_bytes(value, INT32_SIZE,
+                                              byteorder=self.__get_byteorder(byteorder),
+                                              signed=self.__get_signed(signed)))
+
+    # UTF-8
+    def read_utf8(self, n: int) -> str:
+        return self.stream.read(n).decode()
+
+    def write_utf8(self, value: str):
+        self.stream.write(value.encode())
+
+    # UTF-16
+    def read_utf16(self, n: int, byteorder: str = None) -> str:
+        b = self.stream.read(n * 2)
+        encoding = get_utf16_encoding_from_byteorder(byteorder)
+        return b.decode(encoding)
+
+    def write_utf16(self, value: str, byteorder: str = None):
+        encoding = get_utf16_encoding_from_byteorder(byteorder)
+        self.stream.write(value.encode(encoding))
 
 
 def check_end_of_file(file: BytesIO) -> bool:
@@ -60,12 +100,12 @@ def is_null(b: bytes) -> bool:
 
 
 def read_int(f: BytesIO, byteorder: str = None, *, signed: bool = None) -> int:
-    b = f.read(INT_SIZE)
+    b = f.read(INT32_SIZE)
     return int.from_bytes(b, byteorder=byteorder, signed=signed)
 
 
 def write_int(f: BytesIO, value: int, byteorder: str = None, *, signed: bool = None) -> int:
-    return f.write(int.to_bytes(value, INT_SIZE, byteorder=byteorder, signed=signed))
+    return f.write(int.to_bytes(value, INT32_SIZE, byteorder=byteorder, signed=signed))
 
 
 def get_utf16_encoding_from_byteorder(byteorder: str = None) -> str:
@@ -87,23 +127,29 @@ def read_utf16(f: BytesIO, n: int, byteorder: str = None) -> str:
     return b.decode(encoding)
 
 
-def write_size_utf16(f: BytesIO, b: str, byteorder: str = None):
-    write_int(f, len(b), byteorder)
-    write_utf16(f, b, byteorder)
-
-
 def write_utf16(f: BytesIO, b: str, byteorder: str = None):
     encoding = get_utf16_encoding_from_byteorder(byteorder)
     f.write(b.encode(encoding))
 
 
+def write_size_utf16(f: BytesIO, b: str, byteorder: str = None):
+    write_int(f, len(b), byteorder)
+    write_utf16(f, b, byteorder)
+
+
 # n is in charachters; not bytes
 def read_utf8(f: BytesIO, n: int) -> str:
-    return f.read(n).decode()
+    b = f.read(n)
+    return b.decode()
 
 
-def write_utf8(f: BytesIO, b: str):
-    f.write(b.encode())
+def write_utf8(f: BytesIO, b: str, word_size: int = None):
+    b = b.encode()
+    f.write(b)
+    if word_size:
+        padding = bytes_to_word_boundary(len(b), word_size)
+        if padding > 0:
+            f.write(bytes([0x00]*padding))
 
 
 def write_size_utf8(f: BytesIO, b: str, byteorder: str = None):
@@ -111,16 +157,17 @@ def write_size_utf8(f: BytesIO, b: str, byteorder: str = None):
     write_utf8(f, b)
 
 
-def read_utf8_to_terminal(f: BytesIO, buffer_size: int = 1024) -> str:
+def read_utf8_to_terminal(f: BytesIO, buffer_size: int = 1024, word_size: int = None) -> str:
     start = f.tell()
     while True:
         end = f.tell()
         buffer = f.read(buffer_size)
         for i, b in enumerate(buffer):
             if b == 0x00:
-                true_end = end + i + 1  # +1 to capture the terminal
+                len = (end + i + 1) - start  # +1 to capture the terminal
+                padding = bytes_to_word_boundary(len, word_size) if word_size else 0
                 f.seek(start, 0)
-                uft8 = read_utf8(f, true_end - start)
+                uft8 = read_utf8(f, len + padding)
                 return uft8
 
 
