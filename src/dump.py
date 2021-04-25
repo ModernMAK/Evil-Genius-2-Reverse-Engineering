@@ -13,7 +13,13 @@ unknown_root = join(dump_root, "unknown")
 text_root = join(dump_root, "text")
 
 bad_exts = ["exe", "dll", "txt", "webm"]
-
+SPECIAL_NAMES = [
+    "MUS_Tranquil_02.wav",
+    "MUS_Tranquil_01.wav",
+    "MUS_Title_01.wav",
+    "MUS_Action_01.wav",
+    "MUS_Action_02.wav",
+]
 VERBOSE = False
 
 
@@ -103,8 +109,9 @@ def dump(path, pretty_path=None):
             elif isinstance(chunk, ResourceChunk):
 
                 name = chunk.name.lstrip("/\\").rstrip("\0")
-                if "IRIS" in name:
-                    print(f"!!!! !!!! !!!! ~ {file.name}")
+                # for spec_name in SPECIAL_NAMES:
+                #     if spec_name in name:
+                #         print(f"!!!! !!!! !!!! ~ {file.name}")
                 dump_path = join(resource_root, name)
                 enforce_dir(dirname(dump_path))
                 dump_bytes(dump_path, chunk.data)
@@ -112,8 +119,8 @@ def dump(path, pretty_path=None):
             elif isinstance(chunk, AstsChunk):
                 for i, part in enumerate(chunk.data):
                     name = part.name.lstrip("/\\").rstrip("\0")
-                    if "IRIS" in name:
-                        print(f"!!!! !!!! !!!! ~ {file.name}")
+                    # if SPECIAL_NAME in name:
+                    #     print(f"!!!! !!!! !!!! ~ {file.name}")
                     dump_path = join(resource_root, name)
                     enforce_dir(dirname(dump_path))
                     dump_bytes(dump_path, part.data)

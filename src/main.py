@@ -8,69 +8,106 @@ from src.asura.parser import Asura
 cc_path = r"cc\Undertale  Megalovania.wav"
 asts_path_0 = r"G:\Clients\Steam\Launcher\steamapps\common\Evil Genius 2\Sounds\streamingsounds.asr.pc.sounds"
 path_1 = r"G:\Clients\Steam\Launcher\steamapps\common\Evil Genius 2\Misc\packages\required\common_content.asr.pc.streamsounds"
-id_name = "IRIS"
-
-bad_exts = ["exe", "dll", "txt", "webm"]
+path_2 = r"G:\Clients\Steam\Launcher\steamapps\common\Evil Genius 2\Misc\common.asr.pc.sounds"
+id_name = [
+    "MUS_Tranquil_02.wav",
+    "MUS_Tranquil_01.wav",
+    "MUS_Title_01.wav",
+    "MUS_Action_01.wav",
+    "MUS_Action_02.wav",
+]
+bad_exts = ["exe", "dll", "txt", "webm", "old"]
 
 with open(cc_path, "rb") as cc:
     cc_bytes = cc.read()
 
-def do(path):
-    read_path = path + ".old"
-    write_path = path
-    if not exists(read_path):
-        shutil.copyfile(write_path,read_path)
-    else:
-        return
 
+def do(path) -> bool:
+    old_path = path + ".old"
     print(path)
     print("Parsing...")
-    with open(read_path, "rb") as reader:
+
+    parse_path = path if not exists(old_path) else old_path
+
+    with open(parse_path, "rb") as reader:
         try:
             archive = Asura.parse(reader)
         except UnicodeDecodeError:
-            return
+            return False
         except ValueError:
-            return
+            return False
+        except AssertionError:
+            return False
     if archive is None:
-        return
+        return False
     print("\tParsed!")
     print("Scanning...")
+    altered:bool = False
+
+    def parse_clip(c) -> bool:
+        for n in id_name:
+            if n in c.name:
+                print("\tCopying...")
+                c.data = cc_bytes
+                print("\t\tCopied!")
+                return True
+        return False
 
     for i, chunk in enumerate(archive.chunks):
-        print(f"\t{i / len(archive.chunks):.0%}")
+        # print(f"\t{i / len(archive.chunks):.0%}")
         if isinstance(chunk, AstsChunk):
+            chunk_altered = False
             for clip in chunk.data:
-                if id_name in clip.name:
-                    print(f"\t\tScanned!")
-                    print("Copying...")
-                    clip.data = cc_bytes
-                    print("\tCopied!")
-            chunk.header.length = chunk.bytes_size() + chunk.header.bytes_size()
+                if parse_clip(clip):
+                    chunk_altered = True
+            if chunk_altered:
+                chunk.header.length = chunk.bytes_size() + chunk.header.bytes_size()
+                altered = True
         # elif isinstance(chunk, ResourceChunk):
-        #     if id_name in chunk.name:
-        #         print(f"\t\tScanned!")
-        #         print("Copying...")
-        #         chunk.data = cc_bytes
+        #     if parse_clip(chunk):
+        #         altered = True
         #         chunk.header.length = chunk.bytes_size() + chunk.header.bytes_size()
-        #         print("\tCopied!")
+    print(f"\tScanned!")
+    if not altered:
+        print("Unchanged!")
+        return False
+
+    if not exists(old_path):
+        shutil.copyfile(path, old_path)
+
     print("Saving...")
-    with open(write_path, "wb") as writer:
+    with open(path, "wb") as writer:
         archive.type.write(writer)
         for i, chunk in enumerate(archive.chunks):
-            print(f"\t{i / len(archive.chunks):.0%}")
+            # print(f"\t{i / len(archive.chunks):.0%}")
             chunk.write(writer)
     print("\t\tSaved!")
+    return True
+
 
 if __name__ == "__main__":
     launcher_root = r"G:\Clients\Steam\Launcher"
     steam_root = r"C:\Program Files (x86)\Steam"
     root = fr"{launcher_root}\steamapps\common\Evil Genius 2"
 
+    # do(path_2)
+    # exit()
+    success = 0
+    fail = 0
     for directory, subdirs, files in walk(root):
         for file in files:
             path = join(directory, file)
-            do(path)
+            _, ext = splitext(path)
+            if ext[1:] in bad_exts:
+                continue
+            if ext[1:] not in ["streamsounds", "sounds", "asr", "asr_en", "asr_wav_en"]:
+                continue
+            if do(path):
+                success += 1
+            else:
+                fail += 1
+    print(f"\nPassed: {success}")
+    print(f"Failed: {fail}")
     # for directory, subdirs, files in walk(root):
     #     for file in files:
     #         path = join(directory, file)
