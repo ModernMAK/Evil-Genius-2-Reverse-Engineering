@@ -4,7 +4,9 @@ import os
 from enum import Enum
 from os import walk, stat
 from os.path import join, dirname, exists, splitext
-from src.asura.models import HTextChunk, ResourceChunk, DebugChunk, ResourceListChunk, AudioStreamSoundChunk
+
+from src.asura.enums import ChunkType
+from src.asura.models import HTextChunk, ResourceChunk, RawChunk, ResourceListChunk, AudioStreamSoundChunk
 from src.asura.parser import Asura
 
 dump_root = "dump"
@@ -21,6 +23,10 @@ SPECIAL_NAMES = [
     "MUS_Action_02.wav",
 ]
 VERBOSE = False
+USE_FILTERS = False
+FILTERS = [
+    ChunkType.SOUND
+]
 
 
 # https://stackoverflow.com/questions/51286748/make-the-python-json-encoder-support-pythons-new-dataclasses
@@ -57,7 +63,11 @@ def dump(path, pretty_path=None):
     # print(pretty_path or path)
     with open(path, 'rb') as file:
         try:
-            archive = Asura.parse(file)
+            if USE_FILTERS:
+                archive = Asura.parse_filtered(file, FILTERS)
+            else:
+                archive = Asura.parse(file)
+
         except Exception as e:
             print(pretty_path or path)
             print(f"\tERROR [{type(e).__name__}]: ", end="")
@@ -131,7 +141,7 @@ def dump(path, pretty_path=None):
                     }
                     dump_json(dump_path + ".json", meta)
 
-            elif isinstance(chunk, DebugChunk):
+            elif isinstance(chunk, RawChunk):
                 name = pretty_path.replace("...\\", "")
                 dump_path = join(unknown_root, name, f"Chunk [{i}].") + chunk.header.type.value
                 enforce_dir(dirname(dump_path))

@@ -2,7 +2,7 @@ from enum import Enum
 from io import BytesIO
 
 from .common import enum_value_to_enum
-from ..error import assertion_message
+from ..error import assertion_message, EnumDecodeError, ParsingError
 
 
 class ArchiveType(Enum):
@@ -20,12 +20,15 @@ class ArchiveType(Enum):
         try:
             return enum_value_to_enum(v, ArchiveType)
         except KeyError:
-            allowed = ', '.join([f"'{e.value}'" for e in ArchiveType])
-            raise ValueError(assertion_message("Decoding Archive Type", f"Any [{allowed}]", v))
+            raise EnumDecodeError(cls, v, [e.value for e in cls])
 
     @classmethod
-    def read(cls, f: BytesIO) -> 'ArchiveType':
-        return cls.decode(f.read(8))
+    def read(cls, stream: BytesIO) -> 'ArchiveType':
+        index = stream.tell()
+        try:
+            return cls.decode(stream.read(8))
+        except EnumDecodeError as e:
+            raise ParsingError(index) from e
 
     def write(self, f: BytesIO) -> int:
         return f.write(self.encode())

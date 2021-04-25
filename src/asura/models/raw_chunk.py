@@ -5,16 +5,19 @@ from src.asura.models import ArchiveChunk
 
 
 @dataclass
-class DebugChunk(ArchiveChunk):
+class RawChunk(ArchiveChunk):
     data: bytes = None
 
     @property
     def size(self):
         return len(self.data)
 
+    def byte_size(self):
+        return self.size
+
     @staticmethod
     def read(file: BytesIO, chunk_size):
-        result = DebugChunk()
+        result = RawChunk()
         result.data = file.read(chunk_size)
         return result
 
@@ -22,3 +25,4 @@ class DebugChunk(ArchiveChunk):
         written = 0
         written += file.write(self.data)
         return written
+

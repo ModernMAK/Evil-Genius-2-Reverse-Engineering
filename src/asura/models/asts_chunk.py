@@ -39,6 +39,9 @@ class AudioStreamSoundChunk(ArchiveChunk):
             size += d.bytes_size()
         return size
 
+
+
+
     @classmethod
     def read(cls, file: BytesIO):
         result = AudioStreamSoundChunk()

@@ -57,17 +57,20 @@ class HTextChunk(ArchiveChunk):
             return "".join(self.text)
 
     key: str = None
+
+
     descriptions: List[HText] = None
     word_a: bytes = None
     # THIS NUMBER IS ONLY THE BYTES USES TO ENCODE UTF-16
     #   It does not include the 8 bytes to store the metadata (size and secret)
     #   This number *should* logically be equal to the sum of the sizes of the read strings, but I cannot confirm that
-    data_byte_length: bytes = None
+    data_byte_length: int = None
     language: LangCode = None
 
     @property
-    def byte_length(self):
-        return self.data_byte_length + (2 * WORD_SIZE) * self.size
+    def byte_size(self):
+        descriptions_size = self.data_byte_length + (2 * WORD_SIZE) * self.size
+        return descriptions_size + WORD_SIZE + WORD_SIZE + len(self.key) + WORD_SIZE
 
     @property
     def size(self):

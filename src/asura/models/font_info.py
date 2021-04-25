@@ -29,3 +29,7 @@ class FontInfoChunk(ArchiveChunk):
         written += file.write(self.reserved)
         written += file.write(self.data)
         return written
+
+
+    def bytes_size(self):
+        return WORD_SIZE + WORD_SIZE + self.size

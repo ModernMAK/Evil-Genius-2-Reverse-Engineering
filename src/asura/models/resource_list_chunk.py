@@ -15,6 +15,9 @@ class ResourceListChunk(ArchiveChunk):
         reserved_a: bytes = None
         reserved_b: bytes = None
 
+        def bytes_size(self) -> int:
+            return 2 * WORD_SIZE + len(self.name)
+
     items: List[Item] = None
 
     @property
@@ -41,3 +44,9 @@ class ResourceListChunk(ArchiveChunk):
             written += file.write(part.reserved_a)
             written += file.write(part.reserved_b)
         return written
+
+    def bytes_size(self) -> int:
+        items_size = 0
+        for item in self.items:
+            items_size += item.bytes_size()
+        return WORD_SIZE + items_size

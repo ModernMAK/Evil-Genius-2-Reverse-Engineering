@@ -3,7 +3,7 @@ from enum import Enum
 from io import BytesIO
 
 from ..config import BYTE_ORDER
-from ..error import assertion_message
+from ..error import assertion_message, EnumDecodeError
 
 
 class LangCode(Enum):
@@ -28,8 +28,7 @@ class LangCode(Enum):
             reverse = {e.value.value: e for e in LangCode}
             return reverse[v]
         except KeyError:
-            allowed = ', '.join([f"'{e.value.code}'" for e in LangCode])
-            raise ValueError(assertion_message("Decoding Language", f"Any [{allowed}]", v))
+            raise EnumDecodeError(cls, v, [e.value.code for e in cls])
 
     @classmethod
     def read(cls, f: BytesIO) -> 'LangCode':

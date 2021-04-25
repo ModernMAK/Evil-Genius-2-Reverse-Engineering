@@ -1,11 +1,22 @@
 from enum import Enum
 from io import BytesIO
+from struct import Struct, error as struct_error
 
 from src.asura.enums.common import enum_value_to_enum
-from src.asura.error import assertion_message
+from src.asura.error import EnumDecodeError, ParsingError
+from src.asura.mio import unpack_from_stream, pack_into_stream
 
+# I cant get this to be a 'class' variable of the enum (via _ignore_) so this is my hack
+_TYPE_LAYOUT = Struct("4s")
 
 class ChunkType(Enum):
+    @classmethod
+    def _type_layout(cls) -> Struct:
+        return _TYPE_LAYOUT
+
+    # The following are not enum values
+
+    # Special Case ~ Denotes the end of the Archive
     EOF = "\0\0\0\0"
 
     # Resources =   =   =   =   =   =   =
@@ -61,15 +72,19 @@ class ChunkType(Enum):
         try:
             return enum_value_to_enum(v, ChunkType)
         except KeyError:
-            allowed = ', '.join([f"'{e.value}'" for e in ChunkType])
-            raise ValueError(assertion_message("Decoding File Type", f"Any [{allowed}]", v))
+            raise EnumDecodeError(cls, v, [e.value for e in cls])
 
     @classmethod
-    def read(cls, f: BytesIO) -> 'ChunkType':
-        return cls.decode(f.read(4))
+    def read(cls, stream: BytesIO) -> 'ChunkType':
+        index = stream.tell()
+        try:
+            (b,) = unpack_from_stream(_TYPE_LAYOUT, stream)
+            return cls.decode(b)
+        except (EnumDecodeError, struct_error) as e:
+            raise ParsingError(index) from e
 
-    def write(self, f: BytesIO):
-        return f.write(self.encode())
+    def write(self, stream: BytesIO):
+        return pack_into_stream(_TYPE_LAYOUT, self.encode(), stream)
 
     def __str__(self):
         return self.name

@@ -7,18 +7,20 @@ from .archive_chunk import ArchiveChunk
 from .archive import Archive
 from .archive_chunk import ArchiveChunk
 from .zlib_header import ZlibHeader
-from .debug_chunk import DebugChunk
+from .raw_chunk import RawChunk
 from .resource_list_chunk import ResourceListChunk
+from .unread_chunk import UnreadChunk
 
 __all__ = [
     "Archive",
     "ArchiveChunk",
     "ChunkHeader",
     "HTextChunk",
-    "DebugChunk",
+    "RawChunk",
     "ResourceChunk",
     "ZlibHeader",
     "ResourceListChunk",
-    "AudioStreamSoundChunk"
+    "AudioStreamSoundChunk",
+    "UnreadChunk"
 ]
 

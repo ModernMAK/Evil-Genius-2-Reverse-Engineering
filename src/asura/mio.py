@@ -1,7 +1,53 @@
+import struct
 from io import BytesIO, BufferedIOBase
 from typing import List
 from .config import WORD_SIZE, INT32_SIZE
 from .error import assertion_message
+
+
+def merge_struct(*format, create_struct: bool = True):
+    specials = "@=<>!"
+
+    parts = [f.format if isinstance(f, struct.Struct) else f for f in format]
+
+    first_special = None
+    for i, part in enumerate(parts):
+        special = part[0]
+        if special in specials:
+            if not first_special:
+                first_special = special
+            else:
+                assert special == first_special, f"{special} == {first_special}"
+            parts[i] = part[1:]
+
+    if first_special:
+        parts.insert(0, first_special)
+    format_str = " ".join(parts)
+    if create_struct:
+        return struct.Struct(format_str)
+    else:
+        return format_str
+
+
+def unpack_from_stream(format, stream):
+    if isinstance(format, struct.Struct):
+        size = format.size
+        buffer = stream.read(size)
+        return format.unpack_from(buffer)
+    else:
+        size = struct.calcsize(format)
+        buffer = stream.read(size)
+        return struct.unpack_from(format, buffer)
+
+
+def pack_into_stream(format, value, stream):
+    if isinstance(format, struct.Struct):
+        buffer = format.pack(value)
+        return stream.write(buffer)
+    else:
+        buffer = struct.pack(format, value)
+        return stream.write(buffer)
+
 
 class BinaryIO:
     def __init__(self, stream: BufferedIOBase, *, byteorder: str = None, signed: bool = None):
@@ -141,22 +187,28 @@ def read_utf8(f: BytesIO, n: int) -> str:
     return b.decode()
 
 
-def write_utf8(f: BytesIO, b: str, word_size: int = None) -> int:
+def write_utf8(f: BytesIO, b: str, word_size: int = None, enforce_terminal: bool = False) -> int:
     b = b.encode()
+    if b[-1] != 0x00 and enforce_terminal:
+        b = b"".join([b, bytes([0x00])])
+
     written = 0
     written += f.write(b)
+
     if word_size:
         padding = bytes_to_word_boundary(len(b), word_size)
         if padding > 0:
-            written += f.write(bytes([0x00]*padding))
+            written += f.write(bytes([0x00] * padding))
     return written
+
 
 def write_size_utf8(f: BytesIO, b: str, byteorder: str = None):
     write_int(f, len(b), byteorder)
     write_utf8(f, b)
 
 
-def read_utf8_to_terminal(f: BytesIO, buffer_size: int = 1024, word_size: int = None) -> str:
+def read_utf8_to_terminal(f: BytesIO, buffer_size: int = 1024, word_size: int = None,
+                          strip_terminal: bool = False) -> str:
     start = f.tell()
     while True:
         end = f.tell()
@@ -164,10 +216,15 @@ def read_utf8_to_terminal(f: BytesIO, buffer_size: int = 1024, word_size: int = 
         for i, b in enumerate(buffer):
             if b == 0x00:
                 len = (end + i + 1) - start  # +1 to capture the terminal
-                padding = bytes_to_word_boundary(len, word_size) if word_size else 0
                 f.seek(start, 0)
-                uft8 = read_utf8(f, len + padding)
-                return uft8
+                if word_size:
+                    padding = bytes_to_word_boundary(len, word_size) if word_size else 0
+                else:
+                    padding = 0
+                utf8 = read_utf8(f, len + padding)
+                if strip_terminal:
+                    utf8 = utf8[:len]
+                return utf8
 
 
 def read_bytes_to_nonterminal(f: BytesIO, buffer_size: int = 1024):
