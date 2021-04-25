@@ -2,7 +2,7 @@ import shutil
 from os import walk
 from os.path import join, splitext, exists
 
-from src.asura.models import AstsChunk, ResourceChunk
+from src.asura.models import AudioStreamSoundChunk, ResourceChunk
 from src.asura.parser import Asura
 
 cc_path = r"cc\Undertale  Megalovania.wav"
@@ -55,7 +55,7 @@ def do(path) -> bool:
 
     for i, chunk in enumerate(archive.chunks):
         # print(f"\t{i / len(archive.chunks):.0%}")
-        if isinstance(chunk, AstsChunk):
+        if isinstance(chunk, AudioStreamSoundChunk):
             chunk_altered = False
             for clip in chunk.data:
                 if parse_clip(clip):

@@ -7,6 +7,7 @@ from ..error import assertion_message
 
 class ArchiveType(Enum):
     Folder = "Asura   "
+    Cmp = "AsuraCmp"
     ZLib = "AsuraZlb"
     Zbb = "AsuraZbb"
 

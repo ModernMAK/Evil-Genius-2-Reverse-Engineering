@@ -1,4 +1,4 @@
-from .asts_file import AstsChunk
+from .asts_chunk import AudioStreamSoundChunk
 from .chunk_header import ChunkHeader
 from .htext_chunk import HTextChunk
 from .resource_chunk import ResourceChunk
@@ -19,6 +19,6 @@ __all__ = [
     "ResourceChunk",
     "ZlibHeader",
     "ResourceListChunk",
-    "AstsChunk"
+    "AudioStreamSoundChunk"
 ]
 

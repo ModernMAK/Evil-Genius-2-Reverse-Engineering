@@ -7,7 +7,7 @@ from src.asura.enums import ArchiveType, ChunkType
 from src.asura.error import assertion_message
 from src.asura.mio import read_int, is_null
 from src.asura.models import ResourceChunk, HTextChunk, ZlibHeader, ChunkHeader, Archive, ArchiveChunk, DebugChunk, \
-    ResourceListChunk, AstsChunk
+    ResourceListChunk, AudioStreamSoundChunk
 
 
 # Thank you http://wiki.xentax.com/index.php/ASR_ASURA_RSCF
@@ -57,7 +57,7 @@ class Asura:
         elif header.type == ChunkType.RESOURCE_LIST:
             result = ResourceListChunk.read(file)
         elif header.type == ChunkType.SOUND:
-            result = AstsChunk.read(file)
+            result = AudioStreamSoundChunk.read(file)
         else:
             result = DebugChunk.read(file, header.remaining_length)
         # else:

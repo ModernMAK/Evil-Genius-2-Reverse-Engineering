@@ -4,7 +4,7 @@ import os
 from enum import Enum
 from os import walk, stat
 from os.path import join, dirname, exists, splitext
-from src.asura.models import HTextChunk, ResourceChunk, DebugChunk, ResourceListChunk, AstsChunk
+from src.asura.models import HTextChunk, ResourceChunk, DebugChunk, ResourceListChunk, AudioStreamSoundChunk
 from src.asura.parser import Asura
 
 dump_root = "dump"
@@ -116,7 +116,7 @@ def dump(path, pretty_path=None):
                 enforce_dir(dirname(dump_path))
                 dump_bytes(dump_path, chunk.data)
 
-            elif isinstance(chunk, AstsChunk):
+            elif isinstance(chunk, AudioStreamSoundChunk):
                 for i, part in enumerate(chunk.data):
                     name = part.name.lstrip("/\\").rstrip("\0")
                     # if SPECIAL_NAME in name:

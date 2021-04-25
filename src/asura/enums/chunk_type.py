@@ -7,36 +7,49 @@ from src.asura.error import assertion_message
 
 class ChunkType(Enum):
     EOF = "\0\0\0\0"
+
+    # Resources =   =   =   =   =   =   =
     RESOURCE = "RSCF"
-    # SUBTITLE = "fmvs"
+    RESOURCE_LIST = "RSFL"
+
+    # Fonts =   =   =   =   =   =   =   =
+    FONT = "FONT"
     FONT_INFO = "FNFO"
     FONT_DESCRIPTION = "FNTK"
-    FONT = "FONT"
+
+    # Text  =   =   =   =   =   =   =   =
     H_TEXT = "HTXT"
     # L_TEXT = "LTXT"
     # P_TEXT = "PTXT"
     # T_TEXT = "TTXT"
-    RESOURCE_LIST = "RSFL"
     # RUDE_WORDS_LIST = "RUDE"
+
+    # Sound =   =   =   =   =   =   =   =
     SOUND = "ASTS"
-    #
-    TEXTURES_MAYBE = "TXST"
-    UNKNOWN_DLET = "DLET"
+
+    # Texture   =   =   =   =   =   =   =
+    TEXTURE = "TXST"  # THIS NAME IS A GUESS
+
+    # Dialogue =    =   =   =   =   =   =
+    DIALOGUE_LT = "DLLT"
+    DIALOGUE_IG = "DLIG"
+    DIALOGUE_LN = "DLLN"
+    DIALOGUE_EV = "DLEV"
+    DIALOGUE_ET = "DLET"
+
+    # UNKNOWN
     UNKNOWN_RVBP = "RVBP"
     UNKNOWN_ENTI = "ENTI"
     UNKNOWN_ARNM = "ARNM"
     UNKNOWN_DYMG = "DYMG"
-    UNKNOWN_DLLT = "DLLT"
-    UNKNOWN_DLIG = "DLIG"
-    UNKNOWN_DLLN = "DLLN"
-    UNKNOWN_DLEV = "DLEV"
     UNKNOWN_SMXG = "SMXG"
     UNKNOWN_dtvs = "dtvs"
     UNKNOWN_ATIG = "ATIG"
     UNKNOWN_stsy = "stsy"
     UNKNOWN_ttsy = "ttsy"
+    # SUBTITLE = "fmvs"
 
-
+    # EG2 exclusive formats
     EG_Base = "bsnf"
 
     def encode(self) -> bytes:

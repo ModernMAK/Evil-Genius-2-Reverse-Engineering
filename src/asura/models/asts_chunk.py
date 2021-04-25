@@ -4,11 +4,11 @@ from typing import List
 
 from .archive_chunk import ArchiveChunk
 from ..config import BYTE_ORDER, WORD_SIZE
-from ..mio import read_int, write_int, read_utf8, read_utf8_to_terminal, write_utf8
+from ..mio import read_int, write_int, read_utf8_to_terminal, write_utf8
 
 
 @dataclass
-class AstsChunk(ArchiveChunk):
+class AudioStreamSoundChunk(ArchiveChunk):
     @dataclass
     class Item:
         name: str = None
@@ -41,7 +41,7 @@ class AstsChunk(ArchiveChunk):
 
     @classmethod
     def read(cls, file: BytesIO):
-        result = AstsChunk()
+        result = AudioStreamSoundChunk()
         size = read_int(file, BYTE_ORDER)
         result.data = [cls.Item() for _ in range(size)]
         sizes = []
