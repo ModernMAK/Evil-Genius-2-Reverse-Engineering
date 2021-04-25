@@ -1,106 +1,81 @@
-from typing import Generator, Iterable, BinaryIO
+import shutil
+from os import walk
+from os.path import join, splitext, exists
 
-from asura import read_asura
+from src.asura.models import AstsChunk, ResourceChunk
+from src.asura.parser import Asura
 
-miniontrait = r"G:\Clients\Steam\Launcher\steamapps\common\Evil Genius 2\Text\PC\MINIONTRAIT\miniontrait.asr_en"
-objective = r"G:\Clients\Steam\Launcher\steamapps\common\Evil Genius 2\Text\PC\OBJECTIVE\objective.asr_en"
-foj = r"G:\Clients\Steam\Launcher\steamapps\common\Evil Genius 2\Text\PC\FOJ\foj.asr_en"
-filepath = foj
+cc_path = r"cc\Undertale  Megalovania.wav"
+asts_path_0 = r"G:\Clients\Steam\Launcher\steamapps\common\Evil Genius 2\Sounds\streamingsounds.asr.pc.sounds"
+path_1 = r"G:\Clients\Steam\Launcher\steamapps\common\Evil Genius 2\Misc\packages\required\common_content.asr.pc.streamsounds"
+id_name = "IRIS"
 
-def hex(p: bytes, sep: str = None, bytes_per_sep: int = None):
-    if sep is None:
-        return p.hex()
-    if bytes_per_sep is None:
-        return sep.join([p[i:i + 1].hex() for i in range(len(p))])
-    raise NotImplementedError
+bad_exts = ["exe", "dll", "txt", "webm"]
 
+with open(cc_path, "rb") as cc:
+    cc_bytes = cc.read()
 
-UTF16_NULL = bytes([0x00, 0x00])
+def do(path):
+    read_path = path + ".old"
+    write_path = path
+    if not exists(read_path):
+        shutil.copyfile(write_path,read_path)
+    else:
+        return
 
-
-def parse_asura(b: bytes) -> Iterable[bytes]:
-    prev = 0
-    for i in range(0, len(b), 2):
-        part = b[i:i + 2]
-        if part == UTF16_NULL:
-            yield b[prev: i]
-            prev = i + 2
-    if prev < len(b):
-        yield b[prev: len(b)]
-
-
-def run():
-    # def print_tabbed(p,tabs = 0):
-    #     print("\t" * tabs, end="")
-    #     print(p)
-    #
-    # def do_part(title, n = None, depth = 0):
-    #     print(title)
-    #     r = file.read(n) if n is not None else file.read()
-    #     try:
-    #         print_tabbed(r.decode(), depth+1)
-    #         print_tabbed("Decoded",depth+2)
-    #     except UnicodeDecodeError:
-    #         print_tabbed(r, depth+1)
-    #         print_tabbed("Raw",depth+2)
-    #     print_tabbed(len(r), depth+1)
-    #     print()
-    #
-    #
-    # with open(filepath, "rb") as file:
-    #     do_part("Setup",47)
-    #     do_part("Espectro",92)
-    #     do_part("???",149-file.tell())
-    #     do_part("Charging Up",30)
-    #     do_part("REST")
-    # with open(filepath, "rb") as file:
-    #     b = file.read()
-    b = read_asura(filepath)
-    for i, p in enumerate(parse_asura(b)):
-        print(f"[{i}]")
-        print_bytes(p)
-
-    #
-    #
-    # seperated = b.split()
-
-
-def print_bytes(b):
-    encodings = [
-        ('utf-16be', 'UTF-16 BE'),
-        ('utf-16le', 'UTF-16 LE'),
-        ('utf-8', 'UTF-8'),
-    ]
-
-    def print_tabbed(p, t=0):
-        tabs = "\t" * t
-        print(f"{tabs}{p}")
-
-    # for i, p in enumerate(seperated):
-    #     print_tabbed(f"[{i}]")
-    p = b
-    print_tabbed(f"Len:", 1)
-    print_tabbed(len(p), 2)
-    print_tabbed(f"Raw:", 1)
-    print_tabbed(p, 2)
-
-    # if len(p) == 0:
-    # continue
-
-    print_tabbed(f"Hex:", 1)
-    print_tabbed(hex(p, " "), 2)
-
-    for encoding, name in encodings:
+    print(path)
+    print("Parsing...")
+    with open(read_path, "rb") as reader:
         try:
-            decoded = p.decode(encoding)
-            decoded = decoded.replace('\0', '\\n')
-            print_tabbed(f"{name}:", 1)
-            for sub in decoded.split("\n"):
-                print_tabbed(f"s'{sub}'", 2)
+            archive = Asura.parse(reader)
         except UnicodeDecodeError:
-            print_tabbed(f"{name}:", 1)
-            print_tabbed(f"!'Error'", 2)
+            return
+        except ValueError:
+            return
+    if archive is None:
+        return
+    print("\tParsed!")
+    print("Scanning...")
 
+    for i, chunk in enumerate(archive.chunks):
+        print(f"\t{i / len(archive.chunks):.0%}")
+        if isinstance(chunk, AstsChunk):
+            for clip in chunk.data:
+                if id_name in clip.name:
+                    print(f"\t\tScanned!")
+                    print("Copying...")
+                    clip.data = cc_bytes
+                    print("\tCopied!")
+            chunk.header.length = chunk.bytes_size() + chunk.header.bytes_size()
+        # elif isinstance(chunk, ResourceChunk):
+        #     if id_name in chunk.name:
+        #         print(f"\t\tScanned!")
+        #         print("Copying...")
+        #         chunk.data = cc_bytes
+        #         chunk.header.length = chunk.bytes_size() + chunk.header.bytes_size()
+        #         print("\tCopied!")
+    print("Saving...")
+    with open(write_path, "wb") as writer:
+        archive.type.write(writer)
+        for i, chunk in enumerate(archive.chunks):
+            print(f"\t{i / len(archive.chunks):.0%}")
+            chunk.write(writer)
+    print("\t\tSaved!")
 
 if __name__ == "__main__":
-    run()
+    launcher_root = r"G:\Clients\Steam\Launcher"
+    steam_root = r"C:\Program Files (x86)\Steam"
+    root = fr"{launcher_root}\steamapps\common\Evil Genius 2"
+
+    for directory, subdirs, files in walk(root):
+        for file in files:
+            path = join(directory, file)
+            do(path)
+    # for directory, subdirs, files in walk(root):
+    #     for file in files:
+    #         path = join(directory, file)
+    #         _, ext = splitext(path)
+    #         if ext[1:] in bad_exts:
+    #             continue
+    #         pretty_path = path.replace(root, "...")
+    #         dump(path, pretty_path)

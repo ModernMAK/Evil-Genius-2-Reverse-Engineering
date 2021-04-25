@@ -141,14 +141,15 @@ def read_utf8(f: BytesIO, n: int) -> str:
     return b.decode()
 
 
-def write_utf8(f: BytesIO, b: str, word_size: int = None):
+def write_utf8(f: BytesIO, b: str, word_size: int = None) -> int:
     b = b.encode()
-    f.write(b)
+    written = 0
+    written += f.write(b)
     if word_size:
         padding = bytes_to_word_boundary(len(b), word_size)
         if padding > 0:
-            f.write(bytes([0x00]*padding))
-
+            written += f.write(bytes([0x00]*padding))
+    return written
 
 def write_size_utf8(f: BytesIO, b: str, byteorder: str = None):
     write_int(f, len(b), byteorder)
