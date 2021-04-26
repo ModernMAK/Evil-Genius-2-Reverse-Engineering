@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List, BinaryIO
 
 from src.asura.mio import AsuraIO
-from src.asura.models.archive import BaseChunk
+from src.asura.models.archive import BaseChunk, ChunkHeader
 
 
 @dataclass
@@ -22,7 +22,7 @@ class ResourceDescription:
     def write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
-                writer.write_utf8(self.name,padded=True)
+                writer.write_utf8(self.name, padded=True)
                 writer.write_word(self.reserved_a)
                 writer.write_word(self.reserved_b)
             return written.length
@@ -37,11 +37,11 @@ class ResourceListChunk(BaseChunk):
         return len(self.descriptions)
 
     @staticmethod
-    def read(stream: BinaryIO):
+    def read(stream: BinaryIO, header: ChunkHeader = None):
         with AsuraIO(stream) as reader:
             size = reader.read_int32()
             descriptions = [ResourceDescription.read(stream) for _ in range(size)]
-        return ResourceListChunk(None, descriptions)
+        return ResourceListChunk(header, descriptions)
 
     def write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:

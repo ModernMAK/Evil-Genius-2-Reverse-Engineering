@@ -4,7 +4,7 @@ from typing import List, BinaryIO
 
 from src.asura.config import WORD_SIZE
 from src.asura.mio import read_utf8_to_terminal, write_utf8, unpack_from_stream, pack_into_stream, AsuraIO
-from src.asura.models.archive import BaseChunk
+from src.asura.models.archive import BaseChunk, ChunkHeader
 
 
 @dataclass
@@ -56,7 +56,7 @@ class SoundChunk(BaseChunk):
         return len(self.clips)
 
     @classmethod
-    def read(cls, stream: BinaryIO):
+    def read(cls, stream: BinaryIO, header: ChunkHeader = None):
         with AsuraIO(stream) as reader:
             size = reader.read_int32()
             byte = reader.read_byte()
@@ -64,7 +64,7 @@ class SoundChunk(BaseChunk):
             for clip in clips:
                 clip.read_data(stream)
 
-        return SoundChunk(None, byte, clips)
+        return SoundChunk(header, byte, clips)
 
     def write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:

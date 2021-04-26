@@ -4,7 +4,6 @@ from typing import BinaryIO
 
 from .common import enum_value_to_enum
 from ..error import EnumDecodeError, ParsingError
-from ..mio import unpack_from_stream, pack_into_stream
 
 # I cant get this to be a 'class' variable of the enum (via _ignore_) so this is my hack
 _TYPE_LAYOUT = Struct("4s")
@@ -77,13 +76,14 @@ class ChunkType(Enum):
     def read(cls, stream: BinaryIO) -> 'ChunkType':
         index = stream.tell()
         try:
-            (b,) = unpack_from_stream(_TYPE_LAYOUT, stream)
+            b = stream.read(4)
             return cls.decode(b)
         except (EnumDecodeError, struct_error) as e:
             raise ParsingError(index) from e
 
     def write(self, stream: BinaryIO):
-        return pack_into_stream(_TYPE_LAYOUT, self.encode(), stream)
+        b = self.encode()
+        return stream.write(b)
 
     def __str__(self):
         return self.name

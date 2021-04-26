@@ -3,8 +3,9 @@ from struct import Struct
 from typing import List, BinaryIO
 
 from ..enums import ArchiveType, ChunkType
-from ..mio import unpack_from_stream, pack_into_stream
-from ..parser import Parser
+# from ..mio import unpack_from_stream, pack_into_stream
+# from ..parser import Parser
+from ..mio import AsuraIO
 
 
 @dataclass
@@ -23,35 +24,31 @@ class ChunkHeader:
 
     @classmethod
     def read(cls, stream: BinaryIO) -> 'ChunkHeader':
-        result = ChunkHeader()
-        result.type = ChunkType.read(stream)
-        if result.type == ChunkType.EOF:
-            return result
-        result.length, result.version, result.reserved = unpack_from_stream(cls.__meta_layout, stream)
-        return result
+        with AsuraIO(stream) as reader:
+            type = ChunkType.read(stream)
+            if type == ChunkType.EOF:
+                return ChunkHeader(type)
+            length = reader.read_int32()
+            version = reader.read_int32()
+            reserved = reader.read_word()
+            return ChunkHeader(type, length, version, reserved)
 
     def write(self, stream: BinaryIO) -> int:
-        written = 0
-        written += self.type.write(stream)
-        if self.type != ChunkType.EOF:
-            written += pack_into_stream(self.__meta_layout, (self.length, self.version, self.reserved), stream)
-        return written
-
-    # UTILITY to get
-    @staticmethod
-    def rewrite_length(new_length: int, stream: BinaryIO, index: int) -> None:
-        old = stream.tell()
-        stream.seek(index)
-        pack_into_stream("<I", new_length, stream)
-        stream.seek(old)
+        with AsuraIO(stream) as writer:
+            with writer.byte_counter() as written:
+                self.type.write(stream)
+                writer.write_int32(self.length)
+                writer.write_int32(self.version)
+                writer.write_word(self.reserved)
+        return written.length
 
 
 @dataclass
 class BaseChunk:
     header: ChunkHeader = None
-    def write(self, stream: BinaryIO) -> int:
-        raise NotImplementedError("Write Is Not Implimented!")
 
+    def write(self, stream: BinaryIO, write_header: bool = True) -> int:
+        raise NotImplementedError("Write Is Not Implemented!")
 
 
 @dataclass
@@ -61,7 +58,7 @@ class UnparsedChunk(BaseChunk):
     def load(self, stream: BinaryIO) -> BaseChunk:
         prev_pos = stream.tell()
         stream.seek(self.data_start)
-        result = Parser.parse_chunk(self.header.type, stream)
+        result = ChunkParser.parse(self.header.type, stream)
         if result is not None:
             current = stream.tell()
             expected = self.data_start + self.header.chunk_size
@@ -71,7 +68,8 @@ class UnparsedChunk(BaseChunk):
         result.header = self.header
         stream.seek(prev_pos)
         return result
-    
+
+
 @dataclass
 class Archive:
     type: ArchiveType
@@ -127,5 +125,3 @@ class Archive:
             if filters is None or chunk.header.type in filters:
                 if isinstance(chunk, UnparsedChunk):
                     self.chunks[i] = chunk.load(stream)
-
-

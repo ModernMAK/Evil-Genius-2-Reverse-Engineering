@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import BinaryIO
 from src.asura.mio import AsuraIO
-from src.asura.models.archive import BaseChunk
+from src.asura.models.archive import BaseChunk, ChunkHeader
 
 
 @dataclass
@@ -16,14 +16,14 @@ class ResourceChunk(BaseChunk):
         return len(self.data)
 
     @staticmethod
-    def read(stream: BinaryIO):
+    def read(stream: BinaryIO, header:ChunkHeader):
         with AsuraIO(stream) as reader:
             file_type_id_maybe = reader.read_int32()
             file_id_maybe = reader.read_int32()
             size = reader.read_int32()
             name = reader.read_utf8(padded=True)
             data = reader.read(size)
-        return ResourceChunk(None, file_type_id_maybe, file_id_maybe, name, data)
+        return ResourceChunk(header, file_type_id_maybe, file_id_maybe, name, data)
 
     def write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:

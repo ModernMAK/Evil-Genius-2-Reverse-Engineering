@@ -22,7 +22,7 @@ def test_asts_read():
 
         for chunk_clip, clip in zip(asts.clips, chunk.clips):
             assert clip.name == chunk_clip.name, "NAME MISMATCH"
-            assert clip.clips == chunk_clip.clips, "DATA MISMATCH"
+            assert clip.data == chunk_clip.data, "DATA MISMATCH"
 
 #
 # def test_asts_init():

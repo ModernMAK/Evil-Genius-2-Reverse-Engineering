@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import BinaryIO
 
-from src.asura.models import BaseChunk
+from src.asura.models import BaseChunk, ChunkHeader
 
 
 @dataclass
@@ -16,9 +16,9 @@ class RawChunk(BaseChunk):
         return self.size
 
     @staticmethod
-    def read(file: BinaryIO, chunk_size):
-        data = file.read(chunk_size)
-        return RawChunk(None, data)
+    def read(file: BinaryIO, header: ChunkHeader):
+        data = file.read(header.chunk_size)
+        return RawChunk(header, data)
 
     def write(self, file: BinaryIO) -> int:
         return file.write(self.data)

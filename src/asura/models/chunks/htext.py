@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, BinaryIO
 
-from ..archive import BaseChunk
+from ..archive import BaseChunk, ChunkHeader
 from ...enums import LangCode
 from ...mio import AsuraIO, split_asura_richtext
 
@@ -24,7 +24,7 @@ class HText:
 
     @classmethod
     def read(cls, stream: BinaryIO) -> 'HText':
-        with AsuraIO.wrap(stream) as reader:
+        with AsuraIO(stream) as reader:
             unknown = reader.read_int32()
             size = reader.read_int32()
             raw_text = reader.read_utf16(size)
@@ -33,7 +33,7 @@ class HText:
 
     def write(self, stream: BinaryIO) -> int:
         written = 0
-        with AsuraIO.wrap(stream) as writer:
+        with AsuraIO(stream) as writer:
             written += writer.write_int32(self.unknown)
             written += writer.write_int32(self.size)
             written += writer.write_utf16(self.raw_text)
@@ -58,8 +58,8 @@ class HTextChunk(BaseChunk):
         return len(self.parts)
 
     @classmethod
-    def read(cls, stream: BinaryIO, version: int = None) -> 'HTextChunk':
-        if version is not None and version != cls.CURRENT_VERSION:
+    def read(cls, stream: BinaryIO, header: ChunkHeader = None) -> 'HTextChunk':
+        if header is None or header.version != cls.CURRENT_VERSION:
             raise NotImplementedError
 
         with AsuraIO(stream) as reader:
@@ -73,17 +73,19 @@ class HTextChunk(BaseChunk):
             for i, part in enumerate(parts):
                 part.key = part_keys[i]
 
-        return HTextChunk(None, key, parts, unknown_word, parts_size, language)
+        return HTextChunk(header, key, parts, unknown_word, parts_size, language)
 
     def write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
-            writer.write_int32(self.size)
-            writer.write_word(self.word_a)
-            writer.write_int32(self.data_byte_length)
-            self.language.write(stream)
-            keys = []
-            for part in self.parts:
-                part.write(stream)
-                keys.append(part.key)
-            writer.write_utf8_list(keys)
+            with writer.byte_counter() as written:
+                writer.write_int32(self.size)
+                writer.write_word(self.word_a)
+                writer.write_int32(self.data_byte_length)
+                self.language.write(stream)
+                keys = []
+                for part in self.parts:
+                    part.write(stream)
+                    keys.append(part.key)
+                writer.write_utf8_list(keys)
+        return written.length
 

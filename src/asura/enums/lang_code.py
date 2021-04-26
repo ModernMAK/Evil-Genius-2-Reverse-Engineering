@@ -1,4 +1,6 @@
+import struct
 from enum import Enum
+from parser import ParserError
 from struct import Struct
 from typing import BinaryIO
 
@@ -24,15 +26,23 @@ class LangCode(Enum):
 
     @classmethod
     def decode(cls, b: bytes) -> 'LangCode':
-        (v, ) = _type_layout.unpack_from(b)
         try:
-            return enum_value_to_enum(v, cls)
+            v = _type_layout.unpack_from(b)
+        except struct.error as e:
+            raise EnumDecodeError(cls, b, [e.value for e in cls]) from e
+
+        try:
+            return enum_value_to_enum(v, LangCode)
         except KeyError:
             raise EnumDecodeError(cls, v, [e.value for e in cls])
 
     @classmethod
     def read(cls, stream: BinaryIO) -> 'LangCode':
-        return cls.decode(stream.read(_type_layout.size))
+        start = stream.tell()
+        try:
+            return cls.decode(stream.read(_type_layout.size))
+        except EnumDecodeError as e:
+            raise ParserError(start) from e
 
     def write(self, stream: BinaryIO):
         return stream.write(self.encode())

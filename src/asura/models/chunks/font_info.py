@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import BinaryIO
 
 from src.asura.mio import AsuraIO
-from src.asura.models.archive import BaseChunk
+from src.asura.models.archive import BaseChunk, ChunkHeader
 
 
 @dataclass
@@ -15,12 +15,12 @@ class FontInfoChunk(BaseChunk):
         return len(self.data)
 
     @classmethod
-    def read(cls, stream: BinaryIO):
+    def read(cls, stream: BinaryIO, header: ChunkHeader = None) -> 'FontInfoChunk':
         with AsuraIO(stream) as reader:
             size = reader.read_int32()
             reserved = reader.read_word()
             data = reader.read(size)
-            return FontInfoChunk(None, reserved, data)
+            return FontInfoChunk(header, reserved, data)
 
     def write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
