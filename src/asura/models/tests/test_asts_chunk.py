@@ -15,7 +15,7 @@ asts_raw = bytes(b"".join(
     [asts_count, asts_byte_a, asts_clip_name, asts_clip_byte_b, asts_clip_size, asts_clip_word_a, asts_clip_bytes]))
 
 asts = AudioStreamSoundChunk(byte_a=asts_byte_a, data=[
-    AudioStreamSoundChunk.Item(asts_clip_name.decode(), asts_clip_byte_b, asts_clip_word_a, asts_clip_bytes)])
+    AudioStreamSoundChunk.Part(asts_clip_name.decode(), asts_clip_byte_b, asts_clip_word_a, asts_clip_bytes)])
 
 
 def test_asts_read():

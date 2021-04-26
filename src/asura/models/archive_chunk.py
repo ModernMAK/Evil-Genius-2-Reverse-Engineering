@@ -8,9 +8,4 @@ from .chunk_header import ChunkHeader
 class ArchiveChunk:
     header: ChunkHeader = None
 
-    def byte_size(self):
-        raise not NotImplementedError
-
-    def write(self, stream: BytesIO) -> int:
-        raise NotImplementedError
 
