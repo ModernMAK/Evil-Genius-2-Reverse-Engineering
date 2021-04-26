@@ -48,7 +48,7 @@ def do(path) -> bool:
         for n in id_name:
             if n in c.name:
                 print("\tCopying...")
-                c.data = cc_bytes
+                c.clips = cc_bytes
                 print("\t\tCopied!")
                 return True
         return False
@@ -57,7 +57,7 @@ def do(path) -> bool:
         # print(f"\t{i / len(archive.chunks):.0%}")
         if isinstance(chunk, AudioStreamSoundChunk):
             chunk_altered = False
-            for clip in chunk.data:
+            for clip in chunk.clips:
                 if parse_clip(clip):
                     chunk_altered = True
             if chunk_altered:

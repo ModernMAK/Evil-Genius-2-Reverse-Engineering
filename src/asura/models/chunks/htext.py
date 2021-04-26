@@ -1,85 +1,51 @@
 from dataclasses import dataclass
-from struct import Struct
 from typing import List, BinaryIO
 
-from src.asura.models.archive import BaseChunk, ChunkHeader
-from src.asura.config import BYTE_ORDER, WORD_SIZE
-from src.asura.enums import LangCode, ChunkType
-from src.asura.mio import read_int, read_utf16, read_utf8_to_terminal, read_utf8, parse_utf8_string_list, \
-    write_int, write_utf8, unpack_from_stream, pack_into_stream, write_utf16
-
-# THERE IS PROPRIETARY UNICODE IN THE STRING
-from src.asura.parser import Parser
+from ..archive import BaseChunk
+from ...enums import LangCode
+from ...mio import AsuraIO, split_asura_richtext
 
 
-def split_asura_richtext(raw_text: str) -> List[str]:
-    parts = []
-    START = "\ue003"
-    END = "\ue004"
-    last_start = 0
-    while last_start < len(raw_text):
-        try:
-            start = raw_text.index(START, last_start)
-        except ValueError:
-            break
-        try:
-            end = raw_text.index(END, start)
-        except ValueError:
-            break
-        if start > last_start:
-            pre = raw_text[last_start:start]
-            parts.append(pre)
-        body = raw_text[start:end + 1]
-        parts.append(body)
-        last_start = end + 1
+@dataclass
+class HText:
+    key: str = None
+    text: List[str] = None
+    # I Still don't know what this is; but I know it's not a unique identifier;
+    #   22177 Unique out of 22284 Strings
+    unknown: int = None
 
-    if last_start < len(raw_text):
-        parts.append(raw_text[last_start:])
+    @property
+    def raw_text(self) -> str:
+        return "".join(self.text)
 
-    return parts
+    @property
+    def size(self) -> int:
+        return len(self.raw_text)
+
+    @classmethod
+    def read(cls, stream: BinaryIO) -> 'HText':
+        with AsuraIO.wrap(stream) as reader:
+            unknown = reader.read_int32()
+            size = reader.read_int32()
+            raw_text = reader.read_utf16(size)
+            text = split_asura_richtext(raw_text)
+        return HText(text=text, unknown=unknown)
+
+    def write(self, stream: BinaryIO) -> int:
+        written = 0
+        with AsuraIO.wrap(stream) as writer:
+            written += writer.write_int32(self.unknown)
+            written += writer.write_int32(self.size)
+            written += writer.write_utf16(self.raw_text)
+        return written
 
 
 @dataclass
 class HTextChunk(BaseChunk):
     CURRENT_VERSION = 4
 
-    _meta_layout = Struct("< I 4s I")
-
-    @dataclass
-    class Part:
-        _meta_layout = Struct("< 4s I")
-
-        key: str = None
-        text: List[str] = None
-        # I Still don't know what this is; but I know it's not a unique identifier;
-        #   22177 Unique out of 22284 Strings
-        unknown: bytes = None
-
-        @property
-        def raw_text(self) -> str:
-            return "".join(self.text)
-
-        @property
-        def size(self) -> int:
-            return len(self.raw_text)
-
-        @classmethod
-        def read(cls, stream: BinaryIO) -> 'HTextChunk.Clip':
-            part = HTextChunk.Part()
-            part.unknown, size = unpack_from_stream(cls._meta_layout, stream)
-            raw_text = read_utf16(stream, size, BYTE_ORDER)
-            part.text = split_asura_richtext(raw_text)
-            return part
-
-        def write(self, stream: BinaryIO) -> int:
-            written = 0
-            written += pack_into_stream(self._meta_layout, (self.unknown, self.size), stream)
-            written += write_utf16(stream, self.raw_text, BYTE_ORDER)
-            return written
-
     key: str = None
-
-    parts: List[Part] = None
+    parts: List[HText] = None
     word_a: bytes = None
     # THIS NUMBER IS ONLY THE BYTES USES TO ENCODE UTF-16
     #   It does not include the 8 bytes to store the metadata (size and secret)
@@ -96,45 +62,28 @@ class HTextChunk(BaseChunk):
         if version is not None and version != cls.CURRENT_VERSION:
             raise NotImplementedError
 
-        result = HTextChunk()
+        with AsuraIO(stream) as reader:
+            size = reader.read_int32()
+            unknown_word = reader.read_word()
+            parts_size = reader.read_int32()
+            language = LangCode.read(stream)
+            parts = [HText.read(stream) for _ in range(size)]
+            key = reader.read_utf8()
+            part_keys = reader.read_utf8_list()
+            for i, part in enumerate(parts):
+                part.key = part_keys[i]
 
-        string_count, result.word_a, result.data_byte_length = unpack_from_stream(cls._meta_layout, stream)
-        result.language = LangCode.read(stream)
-        result.parts = []
-        for i in range(string_count):
-            part = HTextChunk.Part.read(stream)
-            result.parts.append(part)
-
-        result.key = read_utf8_to_terminal(stream, 16, WORD_SIZE)
-        size = read_int(stream, BYTE_ORDER)
-        keys = read_utf8(stream, size)
-        keys_list = parse_utf8_string_list(keys)
-        for i, part in enumerate(keys_list):
-            result.parts[i].key = part
-
-        return result
+        return HTextChunk(None, key, parts, unknown_word, parts_size, language)
 
     def write(self, stream: BinaryIO) -> int:
-        written = 0
-        written += pack_into_stream(self._meta_layout, (self.size, self.word_a, self.data_byte_length), stream)
-        written += self.language.write(stream)
-        keys = []
-        for part in self.parts:
-            written += part.write(stream)
-            keys.append(part.key)
+        with AsuraIO(stream) as writer:
+            writer.write_int32(self.size)
+            writer.write_word(self.word_a)
+            writer.write_int32(self.data_byte_length)
+            self.language.write(stream)
+            keys = []
+            for part in self.parts:
+                part.write(stream)
+                keys.append(part.key)
+            writer.write_utf8_list(keys)
 
-        written += write_utf8(stream, self.key, WORD_SIZE)
-        if len(keys) > 1:
-            key_str = "".join(keys) + "\0"
-        else:
-            key_str = keys[0]
-        written += write_int(stream, len(key_str), BYTE_ORDER)
-        written += write_utf8(stream, key_str, WORD_SIZE)
-        return written
-
-
-def parse(stream: BinaryIO, header: ChunkHeader) -> HTextChunk:
-    return HTextChunk.read(stream, header.version)
-
-
-Parser.add_chunk_parser(parse, ChunkType.H_TEXT)

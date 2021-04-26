@@ -1,17 +1,17 @@
 from io import BytesIO
 
 from src.asura.enums import LangCode
-from src.asura.models import AudioStreamSoundChunk, HTextChunk
+from src.asura.models.chunks import HText, HTextChunk
 
 LITTLE = "little"
 
 htext_raw = b"\x01\x00\x00\x00\xff\xfe\xfd\xfc.\x00\x00\x00\x00\x00\x00\x00\xef\xee\xed\xec\x16\x00\x00\x00T\x00h\x00i\x00s\x00 \x00i\x00s\x00 \x00a\x00 \x00h\x00t\x00e\x00x\x00t\x00 \x00t\x00e\x00s\x00t\x00.\x00\x00\x00TEST\x00\x00\x00\x00\x05\x00\x00\x00test\x00"
 
 htext = HTextChunk(
-    key="TEST\x00\x00\x00\x00",
-    parts=[HTextChunk.Clip("test\x00",
-                           ["This is a htext test.\x00"],
-                           b"\xef\xee\xed\xec")],
+    key="TEST",
+    parts=[HText("test",
+           ["This is a htext test."],
+           int.from_bytes(b"\xef\xee\xed\xec","little"))],
     word_a=b"\xff\xfe\xfd\xfc",
     data_byte_length=46,
     language=LangCode.ENGLISH)

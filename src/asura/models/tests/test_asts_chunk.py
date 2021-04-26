@@ -1,13 +1,13 @@
 from io import BytesIO
 
-from src.asura.models import AudioStreamSoundChunk
+from src.asura.models.chunks import SoundChunk, SoundClip
 
 LITTLE = "little"
 
 asts_raw = b"\x01\x00\x00\x00\xffThis is an asts test.\x00\x00\x00\xee\x10\x00\x00\x00\xfe\xfd\xfc\xfb0123456789ABCDEF"
-asts = AudioStreamSoundChunk(
+asts = SoundChunk(
     byte_a=bytes([0xff]),
-    data=[AudioStreamSoundChunk.Clip(
+    clips=[SoundClip(
         "This is an asts test.\x00\x00\x00",
         bytes([0xee]),
         bytes([0xfe,0xfd,0xfc,0xfb]),
@@ -16,13 +16,13 @@ asts = AudioStreamSoundChunk(
 
 def test_asts_read():
     with BytesIO(asts_raw) as reader:
-        chunk = AudioStreamSoundChunk.read(reader)
+        chunk = SoundChunk.read(reader)
         assert chunk.size == asts.size, f"SIZE MISMATCH"
         assert chunk.byte_a == asts.byte_a, f"BYTE A MISMATCH"
 
-        for chunk_clip, clip in zip(asts.data, chunk.data):
+        for chunk_clip, clip in zip(asts.clips, chunk.clips):
             assert clip.name == chunk_clip.name, "NAME MISMATCH"
-            assert clip.data == chunk_clip.data, "DATA MISMATCH"
+            assert clip.clips == chunk_clip.clips, "DATA MISMATCH"
 
 #
 # def test_asts_init():
@@ -43,7 +43,7 @@ def test_asts_read():
 
 def test_asts_read_writeback():
     with BytesIO(asts_raw) as reader:
-        chunk = AudioStreamSoundChunk.read(reader)
+        chunk = SoundChunk.read(reader)
 
     with BytesIO() as writer:
         chunk.write(writer)

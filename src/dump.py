@@ -122,7 +122,7 @@ def dump(path, pretty_path=None):
                 dump_bytes(dump_path, chunk.data)
 
             elif isinstance(chunk, SoundChunk):
-                for i, part in enumerate(chunk.data):
+                for i, part in enumerate(chunk.clips):
                     name = part.name.lstrip("/\\").rstrip("\0")
                     # if SPECIAL_NAME in name:
                     #     print(f"!!!! !!!! !!!! ~ {file.name}")

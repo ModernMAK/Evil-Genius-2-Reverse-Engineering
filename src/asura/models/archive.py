@@ -6,6 +6,7 @@ from ..enums import ArchiveType, ChunkType
 from ..mio import unpack_from_stream, pack_into_stream
 from ..parser import Parser
 
+
 @dataclass
 class ChunkHeader:
     __meta_layout = Struct("<I I 4s")

@@ -1,11 +1,7 @@
 from dataclasses import dataclass
 from typing import BinaryIO
-
-from src.asura.models.archive import BaseChunk, ChunkHeader
-from src.asura.config import BYTE_ORDER, WORD_SIZE
-from src.asura.enums import ChunkType
-from src.asura.mio import read_int, read_utf8_to_terminal, write_int, write_utf8
-from src.asura.parser import Parser
+from src.asura.mio import AsuraIO
+from src.asura.models.archive import BaseChunk
 
 
 @dataclass
@@ -20,26 +16,21 @@ class ResourceChunk(BaseChunk):
         return len(self.data)
 
     @staticmethod
-    def read(file: BinaryIO):
-        result = ResourceChunk()
-        result.file_type_id_maybe = read_int(file, BYTE_ORDER)
-        result.file_id_maybe = read_int(file, BYTE_ORDER)
-        size = read_int(file, BYTE_ORDER)
-        result.name = read_utf8_to_terminal(file,64,WORD_SIZE)
-        result.data = file.read(size)
-        return result
+    def read(stream: BinaryIO):
+        with AsuraIO(stream) as reader:
+            file_type_id_maybe = reader.read_int32()
+            file_id_maybe = reader.read_int32()
+            size = reader.read_int32()
+            name = reader.read_utf8(padded=True)
+            data = reader.read(size)
+        return ResourceChunk(None, file_type_id_maybe, file_id_maybe, name, data)
 
-    def write(self, file: BinaryIO) -> int:
-        written = 0
-        written += write_int(file, self.file_type_id_maybe, BYTE_ORDER)
-        written += write_int(file, self.file_id_maybe, BYTE_ORDER)
-        written += write_int(file, self.size, BYTE_ORDER)
-        written += write_utf8(file, self.name, WORD_SIZE)
-        written += file.write(self.data)
-        return written
-
-def parse(stream: BinaryIO, header: ChunkHeader) -> ResourceChunk:
-    return ResourceChunk.read(stream)
-
-
-Parser.add_chunk_parser(parse, ChunkType.RESOURCE)
+    def write(self, stream: BinaryIO) -> int:
+        with AsuraIO(stream) as writer:
+            with writer.byte_counter() as written:
+                writer.write_int32(self.file_type_id_maybe)
+                writer.write_int32(self.file_id_maybe)
+                writer.write_int32(self.size)
+                writer.write_utf8(self.name, padded=True)
+                writer.write(self.data)
+        return written.length
