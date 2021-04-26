@@ -1,42 +1,44 @@
 from collections import namedtuple
 from enum import Enum
 from io import BytesIO
+from struct import Struct
 
+from .common import enum_value_to_enum
 from ..config import BYTE_ORDER
 from ..error import assertion_message, EnumDecodeError
+from ..mio import unpack_from_stream, pack_into_stream
+
+_type_layout = Struct("< I")
 
 
 class LangCode(Enum):
-    Data = namedtuple('Data', 'code value')
-    ENGLISH = Data("en", 0)
-    FRENCH = Data("", 1)
-    ITALIAN = Data("", 3)
-    SPANISH = Data("", 4)
-    GERMAN = Data("", 2)
-    CHINESE_TRADITIONAL = Data("", 10)
-    CHINESE_SIMPLIFIED = Data("", 16)
-    RUSSIAN = Data("", 5)
-    PORTUGUESE_BRAZIL = Data("", 12)
+    ENGLISH = 0
+    FRENCH = 1
+    ITALIAN = 3
+    SPANISH = 4
+    GERMAN = 2
+    CHINESE_TRADITIONAL = 10
+    CHINESE_SIMPLIFIED = 16
+    RUSSIAN = 5
+    PORTUGUESE_BRAZIL = 12
 
     def encode(self) -> bytes:
-        return self.value.encode()
+        return _type_layout.pack(self.value)
 
     @classmethod
     def decode(cls, b: bytes) -> 'LangCode':
-        v = int.from_bytes(b, byteorder=BYTE_ORDER)
+        (v, ) = _type_layout.unpack_from(b)
         try:
-            reverse = {e.value.value: e for e in LangCode}
-            return reverse[v]
+            return enum_value_to_enum(v, cls)
         except KeyError:
-            raise EnumDecodeError(cls, v, [e.value.code for e in cls])
+            raise EnumDecodeError(cls, v, [e.value for e in cls])
 
     @classmethod
-    def read(cls, f: BytesIO) -> 'LangCode':
-        return cls.decode(f.read(4))
+    def read(cls, stream: BytesIO) -> 'LangCode':
+        return cls.decode(stream.read(_type_layout.size))
 
-    def write(self, f: BytesIO):
-        return f.write(self.encode())
+    def write(self, stream: BytesIO):
+        return stream.write(self.encode())
 
     def __str__(self):
         return self.name
-

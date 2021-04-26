@@ -22,6 +22,6 @@ class UnreadChunk(ArchiveChunk):
         elif self.header.type == ChunkType.SOUND:
             result = AudioStreamSoundChunk.read(stream)
         else:
-            result = RawChunk.read(stream, self.header.payload_size)
+            result = RawChunk.read(stream, self.header.chunk_size)
         result.header = self.header
         return result

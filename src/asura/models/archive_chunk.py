@@ -1,6 +1,4 @@
 from dataclasses import dataclass
-from io import BytesIO
-
 from .chunk_header import ChunkHeader
 
 
@@ -8,4 +6,5 @@ from .chunk_header import ChunkHeader
 class ArchiveChunk:
     header: ChunkHeader = None
 
-
+    def write(self) -> int:
+        raise NotImplementedError("Write Is Not Implimented!")

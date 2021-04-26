@@ -15,7 +15,6 @@ class ChunkType(Enum):
         return _TYPE_LAYOUT
 
     # The following are not enum values
-
     # Special Case ~ Denotes the end of the Archive
     EOF = "\0\0\0\0"
 

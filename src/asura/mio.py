@@ -42,10 +42,10 @@ def unpack_from_stream(format, stream):
 
 def pack_into_stream(format, value, stream):
     if isinstance(format, struct.Struct):
-        buffer = format.pack(value)
+        buffer = format.pack(*value)
         return stream.write(buffer)
     else:
-        buffer = struct.pack(format, value)
+        buffer = struct.pack(format, *value)
         return stream.write(buffer)
 
 
@@ -171,9 +171,9 @@ def read_utf16(f: BytesIO, n: int, byteorder: str = None) -> str:
     return b.decode(encoding)
 
 
-def write_utf16(f: BytesIO, b: str, byteorder: str = None):
+def write_utf16(f: BytesIO, b: str, byteorder: str = None) -> int:
     encoding = get_utf16_encoding_from_byteorder(byteorder)
-    f.write(b.encode(encoding))
+    return f.write(b.encode(encoding))
 
 
 def write_size_utf16(f: BytesIO, b: str, byteorder: str = None):

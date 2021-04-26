@@ -49,12 +49,12 @@ class Asura:
 
         if not full_parse:
             result = UnreadChunk(header, stream.tell())
-            stream.seek(header.payload_size, 1)
+            stream.seek(header.chunk_size, 1)
             return result
 
         # Setup seeking; garuntees the stream is read properly
         start = stream.tell()
-        next = start + header.payload_size
+        next = start + header.chunk_size
         if header.type == ChunkType.H_TEXT:
             result = HTextChunk.read(stream, header.version)
         elif header.type == ChunkType.RESOURCE:
@@ -64,7 +64,7 @@ class Asura:
         elif header.type == ChunkType.SOUND:
             result = AudioStreamSoundChunk.read(stream)
         else:
-            result = RawChunk.read(stream, header.payload_size)
+            result = RawChunk.read(stream, header.chunk_size)
         # else:
         #     raise NotImplementedError(header.type)
 
