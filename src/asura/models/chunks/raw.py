@@ -1,11 +1,12 @@
 from dataclasses import dataclass
-from io import BytesIO
+from typing import BinaryIO
 
-from src.asura.models import ArchiveChunk
+from src.asura.models import BaseChunk, ChunkHeader
+from src.asura.parser import Parser
 
 
 @dataclass
-class RawChunk(ArchiveChunk):
+class RawChunk(BaseChunk):
     data: bytes = None
 
     @property
@@ -16,13 +17,19 @@ class RawChunk(ArchiveChunk):
         return self.size
 
     @staticmethod
-    def read(file: BytesIO, chunk_size):
+    def read(file: BinaryIO, chunk_size):
         result = RawChunk()
         result.data = file.read(chunk_size)
         return result
 
-    def write(self, file: BytesIO) -> int:
+    def write(self, file: BinaryIO) -> int:
         written = 0
         written += file.write(self.data)
         return written
 
+
+def parse(stream: BinaryIO, header: ChunkHeader) -> RawChunk:
+    return RawChunk.read(stream, header.chunk_size )
+
+
+Parser.add_chunk_parser(parse, None)

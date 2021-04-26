@@ -2,12 +2,12 @@ from dataclasses import dataclass
 from io import BytesIO
 from struct import Struct
 
-from .archive_chunk import ArchiveChunk
-from ..mio import unpack_from_stream, pack_into_stream
+from src.asura.models.archive import BaseChunk
+from src.asura.mio import unpack_from_stream, pack_into_stream
 
 
 @dataclass
-class FontInfoChunk(ArchiveChunk):
+class FontInfoChunk(BaseChunk):
     _type_layout = Struct("< I 4s")
     reserved: bytes = None
     data: bytes = None

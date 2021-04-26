@@ -1,12 +1,9 @@
-from collections import namedtuple
 from enum import Enum
-from io import BytesIO
 from struct import Struct
+from typing import BinaryIO
 
 from .common import enum_value_to_enum
-from ..config import BYTE_ORDER
-from ..error import assertion_message, EnumDecodeError
-from ..mio import unpack_from_stream, pack_into_stream
+from ..error import EnumDecodeError
 
 _type_layout = Struct("< I")
 
@@ -34,10 +31,10 @@ class LangCode(Enum):
             raise EnumDecodeError(cls, v, [e.value for e in cls])
 
     @classmethod
-    def read(cls, stream: BytesIO) -> 'LangCode':
+    def read(cls, stream: BinaryIO) -> 'LangCode':
         return cls.decode(stream.read(_type_layout.size))
 
-    def write(self, stream: BytesIO):
+    def write(self, stream: BinaryIO):
         return stream.write(self.encode())
 
     def __str__(self):

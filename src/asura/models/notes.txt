@@ -4,7 +4,7 @@ Asura Format:
 MagicWord [8] ~ 'Asura   ', AsuraCmp, AsuraZlb, AsuraZbb
     I dont know what Cmp and Zbb mean; Compressed and Zip of some kind
     I consider these to only be two types; Archive and Compressed Archive
-... See SubFormats
+... See SubFormats ~ TODO WRITE SUBFORMAT NOTES
 
 Asura
 

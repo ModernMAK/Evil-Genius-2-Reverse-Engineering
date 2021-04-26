@@ -3,7 +3,7 @@ from src.asura.error import EnumDecodeError
 
 legal_values = [
     (ArchiveType.Folder, b"Asura   "),
-    (ArchiveType.Cmp, b"AsuraCmp"),
+    (ArchiveType.Compressed, b"AsuraCmp"),
     (ArchiveType.ZLib, b"AsuraZlb"),
     (ArchiveType.Zbb, b"AsuraZbb"),
 ]

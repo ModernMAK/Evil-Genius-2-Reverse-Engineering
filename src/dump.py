@@ -6,8 +6,8 @@ from os import walk, stat
 from os.path import join, dirname, exists, splitext
 
 from src.asura.enums import ChunkType
-from src.asura.models import HTextChunk, ResourceChunk, RawChunk, ResourceListChunk, AudioStreamSoundChunk
-from src.asura.parser import Asura
+from src.asura.models.chunks import HTextChunk, ResourceChunk, RawChunk, ResourceListChunk, SoundChunk
+from src.asura.parser import Parser
 
 dump_root = "dump"
 resource_root = join(dump_root, "resources")
@@ -23,7 +23,6 @@ SPECIAL_NAMES = [
     "MUS_Action_02.wav",
 ]
 VERBOSE = False
-USE_FILTERS = False
 FILTERS = [
     ChunkType.SOUND
 ]
@@ -63,11 +62,7 @@ def dump(path, pretty_path=None):
     # print(pretty_path or path)
     with open(path, 'rb') as file:
         try:
-            if USE_FILTERS:
-                archive = Asura.parse_filtered(file, FILTERS)
-            else:
-                archive = Asura.parse(file)
-
+            archive = Parser.parse_archive(file)
         except Exception as e:
             print(pretty_path or path)
             print(f"\tERROR [{type(e).__name__}]: ", end="")
@@ -126,7 +121,7 @@ def dump(path, pretty_path=None):
                 enforce_dir(dirname(dump_path))
                 dump_bytes(dump_path, chunk.data)
 
-            elif isinstance(chunk, AudioStreamSoundChunk):
+            elif isinstance(chunk, SoundChunk):
                 for i, part in enumerate(chunk.data):
                     name = part.name.lstrip("/\\").rstrip("\0")
                     # if SPECIAL_NAME in name:
@@ -151,6 +146,6 @@ def dump(path, pretty_path=None):
 if __name__ == "__main__":
     launcher_root = r"G:\Clients\Steam\Launcher"
     steam_root = r"C:\Program Files (x86)\Steam"
-    root = fr"{launcher_root}\steamapps\common\Evil Genius 2"
+    root = fr"{steam_root}\steamapps\common\Evil Genius 2"
 
     dump_all(root)

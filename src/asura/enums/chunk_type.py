@@ -1,10 +1,10 @@
 from enum import Enum
-from io import BytesIO
 from struct import Struct, error as struct_error
+from typing import BinaryIO
 
-from src.asura.enums.common import enum_value_to_enum
-from src.asura.error import EnumDecodeError, ParsingError
-from src.asura.mio import unpack_from_stream, pack_into_stream
+from .common import enum_value_to_enum
+from ..error import EnumDecodeError, ParsingError
+from ..mio import unpack_from_stream, pack_into_stream
 
 # I cant get this to be a 'class' variable of the enum (via _ignore_) so this is my hack
 _TYPE_LAYOUT = Struct("4s")
@@ -74,7 +74,7 @@ class ChunkType(Enum):
             raise EnumDecodeError(cls, v, [e.value for e in cls])
 
     @classmethod
-    def read(cls, stream: BytesIO) -> 'ChunkType':
+    def read(cls, stream: BinaryIO) -> 'ChunkType':
         index = stream.tell()
         try:
             (b,) = unpack_from_stream(_TYPE_LAYOUT, stream)
@@ -82,7 +82,7 @@ class ChunkType(Enum):
         except (EnumDecodeError, struct_error) as e:
             raise ParsingError(index) from e
 
-    def write(self, stream: BytesIO):
+    def write(self, stream: BinaryIO):
         return pack_into_stream(_TYPE_LAYOUT, self.encode(), stream)
 
     def __str__(self):

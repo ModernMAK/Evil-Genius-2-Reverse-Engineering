@@ -9,7 +9,7 @@ htext_raw = b"\x01\x00\x00\x00\xff\xfe\xfd\xfc.\x00\x00\x00\x00\x00\x00\x00\xef\
 
 htext = HTextChunk(
     key="TEST\x00\x00\x00\x00",
-    parts=[HTextChunk.Part("test\x00",
+    parts=[HTextChunk.Clip("test\x00",
                            ["This is a htext test.\x00"],
                            b"\xef\xee\xed\xec")],
     word_a=b"\xff\xfe\xfd\xfc",

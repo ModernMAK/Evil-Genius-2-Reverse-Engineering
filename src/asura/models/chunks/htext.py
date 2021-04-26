@@ -1,16 +1,15 @@
 from dataclasses import dataclass
-from io import BytesIO
 from struct import Struct
-from typing import List
+from typing import List, BinaryIO
 
-from .archive_chunk import ArchiveChunk
-from ..config import BYTE_ORDER, WORD_SIZE
-from ..enums import LangCode
-from ..mio import read_int, read_utf16, read_utf8_to_terminal, read_utf8, parse_utf8_string_list, \
-    write_int, write_size_utf16, write_utf8, unpack_from_stream, pack_into_stream, write_utf16
-
+from src.asura.models.archive import BaseChunk, ChunkHeader
+from src.asura.config import BYTE_ORDER, WORD_SIZE
+from src.asura.enums import LangCode, ChunkType
+from src.asura.mio import read_int, read_utf16, read_utf8_to_terminal, read_utf8, parse_utf8_string_list, \
+    write_int, write_utf8, unpack_from_stream, pack_into_stream, write_utf16
 
 # THERE IS PROPRIETARY UNICODE IN THE STRING
+from src.asura.parser import Parser
 
 
 def split_asura_richtext(raw_text: str) -> List[str]:
@@ -41,7 +40,7 @@ def split_asura_richtext(raw_text: str) -> List[str]:
 
 
 @dataclass
-class HTextChunk(ArchiveChunk):
+class HTextChunk(BaseChunk):
     CURRENT_VERSION = 4
 
     _meta_layout = Struct("< I 4s I")
@@ -65,14 +64,14 @@ class HTextChunk(ArchiveChunk):
             return len(self.raw_text)
 
         @classmethod
-        def read(cls, stream: BytesIO) -> 'HTextChunk.Part':
+        def read(cls, stream: BinaryIO) -> 'HTextChunk.Clip':
             part = HTextChunk.Part()
             part.unknown, size = unpack_from_stream(cls._meta_layout, stream)
             raw_text = read_utf16(stream, size, BYTE_ORDER)
             part.text = split_asura_richtext(raw_text)
             return part
 
-        def write(self, stream: BytesIO) -> int:
+        def write(self, stream: BinaryIO) -> int:
             written = 0
             written += pack_into_stream(self._meta_layout, (self.unknown, self.size), stream)
             written += write_utf16(stream, self.raw_text, BYTE_ORDER)
@@ -93,7 +92,7 @@ class HTextChunk(ArchiveChunk):
         return len(self.parts)
 
     @classmethod
-    def read(cls, stream: BytesIO, version: int = None) -> 'HTextChunk':
+    def read(cls, stream: BinaryIO, version: int = None) -> 'HTextChunk':
         if version is not None and version != cls.CURRENT_VERSION:
             raise NotImplementedError
 
@@ -115,7 +114,7 @@ class HTextChunk(ArchiveChunk):
 
         return result
 
-    def write(self, stream: BytesIO) -> int:
+    def write(self, stream: BinaryIO) -> int:
         written = 0
         written += pack_into_stream(self._meta_layout, (self.size, self.word_a, self.data_byte_length), stream)
         written += self.language.write(stream)
@@ -132,3 +131,10 @@ class HTextChunk(ArchiveChunk):
         written += write_int(stream, len(key_str), BYTE_ORDER)
         written += write_utf8(stream, key_str, WORD_SIZE)
         return written
+
+
+def parse(stream: BinaryIO, header: ChunkHeader) -> HTextChunk:
+    return HTextChunk.read(stream, header.version)
+
+
+Parser.add_chunk_parser(parse, ChunkType.H_TEXT)

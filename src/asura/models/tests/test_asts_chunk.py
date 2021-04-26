@@ -7,7 +7,7 @@ LITTLE = "little"
 asts_raw = b"\x01\x00\x00\x00\xffThis is an asts test.\x00\x00\x00\xee\x10\x00\x00\x00\xfe\xfd\xfc\xfb0123456789ABCDEF"
 asts = AudioStreamSoundChunk(
     byte_a=bytes([0xff]),
-    data=[AudioStreamSoundChunk.Part(
+    data=[AudioStreamSoundChunk.Clip(
         "This is an asts test.\x00\x00\x00",
         bytes([0xee]),
         bytes([0xfe,0xfd,0xfc,0xfb]),

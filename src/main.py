@@ -3,7 +3,7 @@ from os import walk
 from os.path import join, splitext, exists
 
 from src.asura.models import AudioStreamSoundChunk, ResourceChunk
-from src.asura.parser import Asura
+from src.asura.parser import Parser
 
 cc_path = r"cc\Undertale  Megalovania.wav"
 asts_path_0 = r"G:\Clients\Steam\Launcher\steamapps\common\Evil Genius 2\Sounds\streamingsounds.asr.pc.sounds"
@@ -31,7 +31,7 @@ def do(path) -> bool:
 
     with open(parse_path, "rb") as reader:
         try:
-            archive = Asura.parse(reader)
+            archive = Parser.parse(reader)
         except UnicodeDecodeError:
             return False
         except ValueError:

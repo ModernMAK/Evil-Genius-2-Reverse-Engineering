@@ -1,13 +1,13 @@
 from enum import Enum
-from io import BytesIO
+from typing import BinaryIO
 
 from .common import enum_value_to_enum
-from ..error import assertion_message, EnumDecodeError, ParsingError
+from ..error import EnumDecodeError, ParsingError
 
 
 class ArchiveType(Enum):
     Folder = "Asura   "
-    Cmp = "AsuraCmp"
+    Compressed = "AsuraCmp"
     ZLib = "AsuraZlb"
     Zbb = "AsuraZbb"
 
@@ -23,14 +23,14 @@ class ArchiveType(Enum):
             raise EnumDecodeError(cls, v, [e.value for e in cls])
 
     @classmethod
-    def read(cls, stream: BytesIO) -> 'ArchiveType':
+    def read(cls, stream: BinaryIO) -> 'ArchiveType':
         index = stream.tell()
         try:
             return cls.decode(stream.read(8))
         except EnumDecodeError as e:
             raise ParsingError(index) from e
 
-    def write(self, f: BytesIO) -> int:
+    def write(self, f: BinaryIO) -> int:
         return f.write(self.encode())
 
     def __str__(self):
