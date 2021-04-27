@@ -1,10 +1,11 @@
 from contextlib import contextmanager
 from typing import List, BinaryIO
 
-from .config import WORD_SIZE, INT32_SIZE
+from .config import WORD_SIZE, INT32_SIZE, INT16_SIZE
 
 
 def bytes_to_word_boundary(index: int, word_size: int) -> int:
+    word_size = int(word_size)  # in case of / division
     bytes = word_size - (index % word_size)
     if bytes == word_size:
         return 0
@@ -37,6 +38,7 @@ class IORange:
 class AsuraIO:
     buffer_size: int = 64
     byte_order = "little"
+    word_size = 4
 
     def __init__(self, stream: BinaryIO):
         self.stream = stream
@@ -48,7 +50,7 @@ class AsuraIO:
         pass
 
     @contextmanager
-    def bookmark(self) -> IORange:
+    def bookmark(self) -> int:
         start = self.stream.tell()
         yield start
         self.stream.seek(start)
@@ -60,7 +62,7 @@ class AsuraIO:
         return self.stream.read(n)
 
     def write(self, value: bytes) -> int:
-        return self.write(value)
+        return self.stream.write(value)
 
     def read_int32(self, signed: bool = None) -> int:
         b = self.stream.read(INT32_SIZE)
@@ -69,6 +71,27 @@ class AsuraIO:
     def write_int32(self, value: int, signed: bool = None) -> int:
         b = int.to_bytes(value, INT32_SIZE, self.byte_order, signed=signed)
         return self.stream.write(b)
+
+    def read_int16(self, signed: bool = None) -> int:
+        b = self.stream.read(INT16_SIZE)
+        return int.from_bytes(b, self.byte_order, signed=signed)
+
+    def write_int16(self, value: int, signed: bool = None) -> int:
+        b = int.to_bytes(value, INT16_SIZE, self.byte_order, signed=signed)
+        return self.stream.write(b)
+
+    def read_bool(self) -> bool:
+        b = self.read_byte()
+        if b[0] == 0x00:
+            return False
+        elif b[0] == 0x01:
+            return True
+        else:
+            raise NotImplementedError (b)
+
+    def write_bool(self, value: bool) -> int:
+        return self.write_byte(bytes([0x01]) if value else bytes([0x00]))
+
 
     def read_byte(self) -> bytes:
         return self.stream.read(1)
@@ -84,7 +107,12 @@ class AsuraIO:
         assert len(value) == WORD_SIZE
         return self.stream.write(value)
 
-    def read_utf8(self, size: int = None, *, padded=False, strip_terminal=True) -> str:
+    def read_utf8(self, size: int = None, *, padded=False, strip_terminal=True, read_size=False) -> str:
+        if read_size and size is not None:
+            raise ValueError("Cannot use read_size and size!")
+        if read_size:
+            size = self.read_int32()
+
         if not size:
             with self.bookmark() as start:
                 while size is None:
@@ -102,14 +130,18 @@ class AsuraIO:
             value = value.rstrip("\x00".encode())
         return value.decode("utf-8")
 
-    def write_utf8(self, value: str, *, padded=False, enforce_terminal=True) -> int:
+    def write_utf8(self, value: str, *, padded=False, enforce_terminal=True, write_size=False) -> int:
         if enforce_terminal:
             if len(value) == 0 or value[-1] != "\x00":
                 value += "\x00"
         padding = bytes_to_word_boundary(len(value), WORD_SIZE) if padded else 0
         value += "\x00" * padding
         encoded = value.encode()
-        return self.stream.write(encoded)
+        written = 0
+        if write_size:
+            written += self.write_int32(len(encoded))
+        written += self.stream.write(encoded)
+        return written
 
     def read_utf8_list(self, *, strip_terminal=True) -> List[str]:
         size = self.read_int32()
@@ -122,24 +154,29 @@ class AsuraIO:
     def write_utf8_list(self, value: List[str]) -> int:
         written = 0
         with self.bookmark():
-            written+= self.write_int32(-1, signed=True)
+            written += self.write_int32(-1, signed=True)
             with self.byte_counter() as size:
                 for part in value:
-                    written+= self.write_utf8(part)
-                written+= self.write_byte("\x00".encode())
+                    written += self.write_utf8(part)
         # Window jumps us back to our placeholder -1; which now holds the proper size
         self.write_int32(size.length)
         # We then jump back to the list end to avoid over writing the bytes of the list
         self.stream.seek(size.end)
         return written
 
-    def read_utf16(self, size: int = None, *, padded=False, strip_terminal=True) -> str:
+    def read_utf16(self, size: int = None, *, padded: bool = False, strip_terminal: bool = True,
+                   read_size: bool = False) -> str:
+        if read_size and size is not None:
+            raise ValueError("Cannot use read_size and size!")
+        if read_size:
+            size = self.read_int32()
+
         if not size:
             with self.bookmark() as start:
                 while size is None:
                     end = self.stream.tell()
                     buffer = self.stream.read(self.buffer_size)
-                    for i in range(len(buffer), step=2):
+                    for i in range(0, len(buffer), 2):
                         if buffer[i] == 0x00 and buffer[i + 1] == 0x00:
                             size = (end + i + 2) - start
                             break
@@ -147,20 +184,24 @@ class AsuraIO:
             size *= 2
 
         padding = bytes_to_word_boundary(size, WORD_SIZE) if padded else 0
-        value = self.stream.read(size + padding)
-
+        value = bytearray(self.stream.read(size + padding))
+        decoded = value.decode("utf-16le")
         if strip_terminal:
-            value = value.rstrip("\x00".encode())
-        return value.decode("utf-16le")
+            decoded = decoded.rstrip("\x00")
+        return decoded
 
-    def write_utf16(self, value: str, *, padded=False, enforce_terminal=True) -> int:
+    def write_utf16(self, value: str, *, padded: bool = False, enforce_terminal: bool = True,
+                    write_size: bool = False) -> int:
         if enforce_terminal:
             if len(value) == 0 or value[-1] != "\x00":
                 value += "\x00"
         # We have to halve the word_size to avoid overpadding, since value is still utf-8
-        padding = bytes_to_word_boundary(len(value), WORD_SIZE / 2) if padded else 0
-        value += "\x00" * padding
-        encoded = value.encode("utf-16le")
+        encoded = bytearray(value.encode("utf-16le"))
+        if padded:
+            padding = bytes_to_word_boundary(len(encoded), WORD_SIZE)
+            encoded.extend(bytes([0x00] * padding))
+        if write_size:
+            self.write_int32(len(encoded) // 2)
         return self.stream.write(encoded)
 
 

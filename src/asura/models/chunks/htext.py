@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, BinaryIO
 
-from ..archive import BaseChunk, ChunkHeader
+from . import BaseChunk, ChunkHeader
 from ...enums import LangCode
 from ...mio import AsuraIO, split_asura_richtext
 
@@ -26,8 +26,7 @@ class HText:
     def read(cls, stream: BinaryIO) -> 'HText':
         with AsuraIO(stream) as reader:
             unknown = reader.read_int32()
-            size = reader.read_int32()
-            raw_text = reader.read_utf16(size)
+            raw_text = reader.read_utf16(read_size=True)
             text = split_asura_richtext(raw_text)
         return HText(text=text, unknown=unknown)
 
@@ -35,8 +34,7 @@ class HText:
         written = 0
         with AsuraIO(stream) as writer:
             written += writer.write_int32(self.unknown)
-            written += writer.write_int32(self.size)
-            written += writer.write_utf16(self.raw_text)
+            written += writer.write_utf16(self.raw_text, enforce_terminal=True, write_size=True)
         return written
 
 
@@ -68,14 +66,14 @@ class HTextChunk(BaseChunk):
             parts_size = reader.read_int32()
             language = LangCode.read(stream)
             parts = [HText.read(stream) for _ in range(size)]
-            key = reader.read_utf8()
+            key = reader.read_utf8(padded=True)
             part_keys = reader.read_utf8_list()
             for i, part in enumerate(parts):
                 part.key = part_keys[i]
 
         return HTextChunk(header, key, parts, unknown_word, parts_size, language)
 
-    def write(self, stream: BinaryIO, header:ChunkHeader=None) -> int:
+    def write(self, stream: BinaryIO, header: ChunkHeader = None) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
                 writer.write_int32(self.size)
@@ -86,6 +84,6 @@ class HTextChunk(BaseChunk):
                 for part in self.parts:
                     part.write(stream)
                     keys.append(part.key)
+                writer.write_utf8(self.key, padded=True)
                 writer.write_utf8_list(keys)
         return written.length
-

@@ -2,20 +2,22 @@ import shutil
 from os import walk
 from os.path import join, splitext, exists
 
-from src.asura.models import AudioStreamSoundChunk, ResourceChunk
-from src.asura.chunkparser import ChunkParser
+from src.asura.enums import ChunkType
+from src.asura.models.archive import BaseArchive, Archive
+from src.asura.models.chunks import SoundChunk, SoundClip, ResourceChunk
+from src.asura.parsers import ArchiveParser
 
-cc_path = r"cc\Undertale  Megalovania.wav"
+cc_path = r"cc\Undertale Megalovania.compressed.clip.wav"
 asts_path_0 = r"G:\Clients\Steam\Launcher\steamapps\common\Evil Genius 2\Sounds\streamingsounds.asr.pc.sounds"
 path_1 = r"G:\Clients\Steam\Launcher\steamapps\common\Evil Genius 2\Misc\packages\required\common_content.asr.pc.streamsounds"
 path_2 = r"G:\Clients\Steam\Launcher\steamapps\common\Evil Genius 2\Misc\common.asr.pc.sounds"
-id_name = [
-    "MUS_Tranquil_02.wav",
-    "MUS_Tranquil_01.wav",
-    "MUS_Title_01.wav",
-    "MUS_Action_01.wav",
-    "MUS_Action_02.wav",
-]
+# id_name = [
+#     "MUS_Tranquil_02.wav",
+#     "MUS_Tranquil_01.wav",
+#     "MUS_Title_01.wav",
+#     "MUS_Action_01.wav",
+# ]
+id_name = ['.wav']
 bad_exts = ["exe", "dll", "txt", "webm", "old"]
 
 with open(cc_path, "rb") as cc:
@@ -31,42 +33,61 @@ def do(path) -> bool:
 
     with open(parse_path, "rb") as reader:
         try:
-            archive = ChunkParser.parse(reader)
-        except UnicodeDecodeError:
+            archive = ArchiveParser.parse(reader)
+        except (UnicodeDecodeError, ValueError, AssertionError) as e:
+            print(f"\t{e}")
             return False
-        except ValueError:
+        if archive is None or type(archive) != Archive:
             return False
-        except AssertionError:
+        archive: Archive = archive
+        if not archive.load(reader, [ChunkType.SOUND,ChunkType.RESOURCE]):  # If any sound chunks are loaded
             return False
-    if archive is None:
-        return False
+
     print("\tParsed!")
     print("Scanning...")
-    altered:bool = False
+    altered: bool = False
 
-    def parse_clip(c) -> bool:
-        for n in id_name:
-            if n in c.name:
+    def parse_clip(c: SoundClip) -> bool:
+        def do():
+            if not c.is_sparse:
                 print("\tCopying...")
-                c.clips = cc_bytes
+                c.data = cc_bytes
                 print("\t\tCopied!")
                 return True
-        return False
+            return False
+
+        if id_name:
+            for n in id_name:
+                if n in c.name:
+                    return do()
+            return False
+        else:
+            return do()
+
+    def parse_resource(r:ResourceChunk) -> bool:
+        def do():
+            print("\tCopying...")
+            r.data = cc_bytes
+            print("\t\tCopied!")
+            return True
+
+        if id_name:
+            for n in id_name:
+                if n in r.name:
+                    return do()
+            return False
+        else:
+            return do()
 
     for i, chunk in enumerate(archive.chunks):
         # print(f"\t{i / len(archive.chunks):.0%}")
-        if isinstance(chunk, AudioStreamSoundChunk):
-            chunk_altered = False
+        if isinstance(chunk, SoundChunk):
             for clip in chunk.clips:
                 if parse_clip(clip):
-                    chunk_altered = True
-            if chunk_altered:
-                chunk.header.length = chunk.bytes_size() + chunk.header.bytes_size()
+                    altered = True
+        elif isinstance(chunk, ResourceChunk):
+            if parse_resource(chunk):
                 altered = True
-        # elif isinstance(chunk, ResourceChunk):
-        #     if parse_clip(chunk):
-        #         altered = True
-        #         chunk.header.length = chunk.bytes_size() + chunk.header.bytes_size()
     print(f"\tScanned!")
     if not altered:
         print("Unchanged!")
@@ -75,12 +96,12 @@ def do(path) -> bool:
     if not exists(old_path):
         shutil.copyfile(path, old_path)
 
+    with open(parse_path, "rb") as reader:
+        archive.load(reader)
+
     print("Saving...")
     with open(path, "wb") as writer:
-        archive.type.write(writer)
-        for i, chunk in enumerate(archive.chunks):
-            # print(f"\t{i / len(archive.chunks):.0%}")
-            chunk.write(writer)
+        archive.write(writer)
     print("\t\tSaved!")
     return True
 

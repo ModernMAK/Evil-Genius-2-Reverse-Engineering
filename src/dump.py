@@ -6,8 +6,9 @@ from os import walk, stat
 from os.path import join, dirname, exists, splitext
 
 from src.asura.enums import ChunkType
+from src.asura.models.archive import BaseArchive, Archive
 from src.asura.models.chunks import HTextChunk, ResourceChunk, RawChunk, ResourceListChunk, SoundChunk
-from src.asura.chunkparser import ChunkParser
+from src.asura.parsers import ChunkParser, ArchiveParser
 
 dump_root = "dump"
 resource_root = join(dump_root, "resources")
@@ -62,7 +63,7 @@ def dump(path, pretty_path=None):
     # print(pretty_path or path)
     with open(path, 'rb') as file:
         try:
-            archive = ChunkParser.parse_archive(file)
+            archive = ArchiveParser.parse(file)
         except Exception as e:
             print(pretty_path or path)
             print(f"\tERROR [{type(e).__name__}]: ", end="")
@@ -70,10 +71,12 @@ def dump(path, pretty_path=None):
             # raise
             return
 
-        if archive is None:
+        if archive is None or type(archive) == BaseArchive:
             print(pretty_path or path)
             print(f"\tUnparsable!")
             return
+        archive:Archive = archive
+        archive.load(file,filters=FILTERS)
 
         def dump_json(p, o):
             b = json.dumps(o, indent=4, cls=EnhancedJSONEncoder)
@@ -128,11 +131,12 @@ def dump(path, pretty_path=None):
                     #     print(f"!!!! !!!! !!!! ~ {file.name}")
                     dump_path = join(resource_root, name)
                     enforce_dir(dirname(dump_path))
-                    dump_bytes(dump_path, part.data)
+                    if not part.is_sparse:
+                        dump_bytes(dump_path, part.data)
                     meta = {
-                        "unknown_chunk_byte": chunk.byte_a,
+                        "unknown_chunk_byte": chunk.is_sparse,
                         "unknown_part_word": part.reserved_b,
-                        "unknown_part_byte": part.byte_b
+                        "unknown_part_byte": part.is_sparse
                     }
                     dump_json(dump_path + ".json", meta)
 
@@ -146,6 +150,13 @@ def dump(path, pretty_path=None):
 if __name__ == "__main__":
     launcher_root = r"G:\Clients\Steam\Launcher"
     steam_root = r"C:\Program Files (x86)\Steam"
-    root = fr"{steam_root}\steamapps\common\Evil Genius 2"
+    local_root = fr"steamapps\common\Evil Genius 2"
 
-    dump_all(root)
+    roots = [
+        join(launcher_root, local_root),
+        join(steam_root, local_root)
+    ]
+    for root in roots:
+        if exists(root):
+            dump_all(root)
+            break

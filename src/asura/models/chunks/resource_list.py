@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List, BinaryIO
 
 from src.asura.mio import AsuraIO
-from src.asura.models.archive import BaseChunk, ChunkHeader
+from . import BaseChunk, ChunkHeader
 
 
 @dataclass

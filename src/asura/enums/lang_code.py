@@ -13,13 +13,13 @@ _type_layout = Struct("< I")
 class LangCode(Enum):
     ENGLISH = 0
     FRENCH = 1
+    GERMAN = 2
     ITALIAN = 3
     SPANISH = 4
-    GERMAN = 2
-    CHINESE_TRADITIONAL = 10
-    CHINESE_SIMPLIFIED = 16
     RUSSIAN = 5
+    CHINESE_TRADITIONAL = 10
     PORTUGUESE_BRAZIL = 12
+    CHINESE_SIMPLIFIED = 16
 
     def encode(self) -> bytes:
         return _type_layout.pack(self.value)
@@ -27,7 +27,7 @@ class LangCode(Enum):
     @classmethod
     def decode(cls, b: bytes) -> 'LangCode':
         try:
-            v = _type_layout.unpack_from(b)
+            (v,) = _type_layout.unpack_from(b)
         except struct.error as e:
             raise EnumDecodeError(cls, b, [e.value for e in cls]) from e
 
