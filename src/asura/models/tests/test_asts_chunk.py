@@ -8,7 +8,7 @@ asts_raw = b"\x01\x00\x00\x00\xffThis is an asts test.\x00\x00\x00\xee\x10\x00\x
 asts = SoundChunk(
     byte_a=bytes([0xff]),
     clips=[SoundClip(
-        "This is an asts test.\x00\x00\x00",
+        "This is an asts test.",
         bytes([0xee]),
         bytes([0xfe,0xfd,0xfc,0xfb]),
         b"0123456789ABCDEF")]

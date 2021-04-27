@@ -59,7 +59,7 @@ class HTextChunk(BaseChunk):
 
     @classmethod
     def read(cls, stream: BinaryIO, header: ChunkHeader = None) -> 'HTextChunk':
-        if header is None or header.version != cls.CURRENT_VERSION:
+        if header is not None and header.version != cls.CURRENT_VERSION:
             raise NotImplementedError
 
         with AsuraIO(stream) as reader:
@@ -75,7 +75,7 @@ class HTextChunk(BaseChunk):
 
         return HTextChunk(header, key, parts, unknown_word, parts_size, language)
 
-    def write(self, stream: BinaryIO) -> int:
+    def write(self, stream: BinaryIO, header:ChunkHeader=None) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
                 writer.write_int32(self.size)

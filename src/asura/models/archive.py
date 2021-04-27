@@ -56,9 +56,12 @@ class UnparsedChunk(BaseChunk):
     data_start: int = None
 
     def load(self, stream: BinaryIO) -> BaseChunk:
+        from src.asura.chunkparser import ChunkParser
+
         prev_pos = stream.tell()
         stream.seek(self.data_start)
-        result = ChunkParser.parse(self.header.type, stream)
+        ChunkParser.load()
+        result = ChunkParser.parse(self.header, stream)
         if result is not None:
             current = stream.tell()
             expected = self.data_start + self.header.chunk_size

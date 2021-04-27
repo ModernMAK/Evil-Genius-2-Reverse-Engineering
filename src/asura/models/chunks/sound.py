@@ -1,9 +1,7 @@
 from dataclasses import dataclass
-from struct import Struct
 from typing import List, BinaryIO
 
-from src.asura.config import WORD_SIZE
-from src.asura.mio import read_utf8_to_terminal, write_utf8, unpack_from_stream, pack_into_stream, AsuraIO
+from src.asura.mio import AsuraIO
 from src.asura.models.archive import BaseChunk, ChunkHeader
 
 

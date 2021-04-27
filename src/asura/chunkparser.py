@@ -6,13 +6,15 @@
 #
 # # These types are only used for type annotations; they are supposed to be from .enum and .model
 # # But because UnreadChunk relies on parser; we have this
-from typing import BinaryIO, Callable
+from typing import BinaryIO, Callable, Dict
 
-from .enums import ArchiveType, ChunkType
-from .models import Archive
-from .models.archive import BaseChunk
+from .enums import ChunkType
+from .models.archive import BaseChunk, ChunkHeader
+
 #
-ChunkParser = Callable[[BinaryIO], BaseChunk]
+ParseChunk = Callable[[BinaryIO, ChunkHeader], BaseChunk]
+
+
 # ArchiveParser = Callable[[BinaryIO, ArchiveType], Archive]
 #
 #
@@ -85,18 +87,32 @@ ChunkParser = Callable[[BinaryIO], BaseChunk]
 #     #         archive.load(stream, filters)
 #     #         return archive
 
-class Parser:
-    _map: Dict[ChunkType, ChunkParser] = {}
-    _default: ChunkParser = None
+class ChunkParser:
+    _map: Dict[ChunkType, ParseChunk] = {}
+    _default: ParseChunk = None
     # _archive_parser: Dict[ArchiveType, Callable[[BinaryIO, ArchiveType], Archive]] = {}
     # _default_archive_parser: ArchiveParser = None
+    __loaded: bool = False
 
     @classmethod
-    def set_parser(cls, parser: ChunkParser, type: ChunkType = None):
+    def load(cls, reload: bool = False):
+        if not reload and cls.__loaded:
+            return
+        cls.__loaded = True
+        from .models.chunks import HTextChunk, SoundChunk, RawChunk, ResourceChunk, ResourceListChunk
+        cls.set_parser(HTextChunk.read, ChunkType.H_TEXT)
+        cls.set_parser(SoundChunk.read, ChunkType.SOUND)
+        cls.set_parser(RawChunk.read)
+        cls.set_parser(ResourceChunk.read, ChunkType.RESOURCE)
+        cls.set_parser(ResourceListChunk.read, ChunkType.RESOURCE_LIST)
+
+    @classmethod
+    def set_parser(cls, parser: ParseChunk, type: ChunkType = None):
         if type:
             cls._map[type] = parser
         else:
             cls._default = parser
+
     #
     # @classmethod
     # def add_archive_parser(cls, parser: ArchiveParser, type: ArchiveType = None):
@@ -106,6 +122,6 @@ class Parser:
     #         cls._default_archive_parser = parser
 
     @classmethod
-    def parse(cls, header:, stream:BinaryIO) -> BaseChunk:
+    def parse(cls, header: ChunkHeader, stream: BinaryIO) -> BaseChunk:
         parser = cls._map.get(type, cls._default)
         return parser

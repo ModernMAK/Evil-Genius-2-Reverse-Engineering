@@ -62,11 +62,11 @@ class AsuraIO:
     def write(self, value: bytes) -> int:
         return self.write(value)
 
-    def read_int32(self, signed: bool = True) -> int:
+    def read_int32(self, signed: bool = None) -> int:
         b = self.stream.read(INT32_SIZE)
         return int.from_bytes(b, self.byte_order, signed=signed)
 
-    def write_int32(self, value: int, signed: bool = True) -> int:
+    def write_int32(self, value: int, signed: bool = None) -> int:
         b = int.to_bytes(value, INT32_SIZE, self.byte_order, signed=signed)
         return self.stream.write(b)
 
@@ -120,19 +120,18 @@ class AsuraIO:
         return split
 
     def write_utf8_list(self, value: List[str]) -> int:
+        written = 0
         with self.bookmark():
-            self.write_int32(-1)
-            with self.bookmark() as list_start:
+            written+= self.write_int32(-1, signed=True)
+            with self.byte_counter() as size:
                 for part in value:
-                    self.write_utf8(part)
-                self.write_byte("\x00".encode())
-                list_end = self.stream.tell()
-                list_size = list_end - list_start
+                    written+= self.write_utf8(part)
+                written+= self.write_byte("\x00".encode())
         # Window jumps us back to our placeholder -1; which now holds the proper size
-        self.write_int32(list_size)
+        self.write_int32(size.length)
         # We then jump back to the list end to avoid over writing the bytes of the list
-        self.stream.seek(list_end)
-        return list_size
+        self.stream.seek(size.end)
+        return written
 
     def read_utf16(self, size: int = None, *, padded=False, strip_terminal=True) -> str:
         if not size:

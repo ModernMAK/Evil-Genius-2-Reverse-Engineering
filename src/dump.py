@@ -7,7 +7,7 @@ from os.path import join, dirname, exists, splitext
 
 from src.asura.enums import ChunkType
 from src.asura.models.chunks import HTextChunk, ResourceChunk, RawChunk, ResourceListChunk, SoundChunk
-from src.asura.parser import Parser
+from src.asura.chunkparser import ChunkParser
 
 dump_root = "dump"
 resource_root = join(dump_root, "resources")
@@ -62,7 +62,7 @@ def dump(path, pretty_path=None):
     # print(pretty_path or path)
     with open(path, 'rb') as file:
         try:
-            archive = Parser.parse_archive(file)
+            archive = ChunkParser.parse_archive(file)
         except Exception as e:
             print(pretty_path or path)
             print(f"\tERROR [{type(e).__name__}]: ", end="")
