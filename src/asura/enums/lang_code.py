@@ -21,6 +21,12 @@ class LangCode(Enum):
     PORTUGUESE_BRAZIL = 12
     CHINESE_SIMPLIFIED = 16
 
+    @property
+    def code(self):
+        return {
+            0: 'en'
+        }.get(self.value, "??")
+
     def encode(self) -> bytes:
         return _type_layout.pack(self.value)
 

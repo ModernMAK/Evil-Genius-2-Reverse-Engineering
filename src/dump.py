@@ -3,19 +3,25 @@ import json
 import os
 from enum import Enum
 from os import walk, stat
-from os.path import join, dirname, exists, splitext
+from os.path import join, dirname, exists, splitext, basename
 
+from asura.enums import ArchiveType
 from src.asura.enums import ChunkType
-from src.asura.models.archive import BaseArchive, Archive
+from src.asura.models.archive import BaseArchive, Archive, ZbbArchive
 from src.asura.models.chunks import HTextChunk, ResourceChunk, RawChunk, ResourceListChunk, SoundChunk
 from src.asura.parsers import ChunkParser, ArchiveParser
 
 dump_root = "dump"
-resource_root = join(dump_root, "resources")
-unknown_root = join(dump_root, "unknown")
-text_root = join(dump_root, "text")
 
-bad_exts = ["exe", "dll", "txt", "webm"]
+
+def get_roots(local_root):
+    resource_root = join(dump_root, local_root, "resources")
+    unknown_root = join(dump_root, local_root, "unknown")
+    text_root = join(dump_root, local_root, "text")
+    return resource_root, unknown_root, text_root
+
+
+bad_exts = ["exe", "dll", "txt", "webm", "bik"]
 SPECIAL_NAMES = [
     "MUS_Tranquil_02.wav",
     "MUS_Tranquil_01.wav",
@@ -24,9 +30,12 @@ SPECIAL_NAMES = [
     "MUS_Action_02.wav",
 ]
 VERBOSE = False
-FILTERS = [
-    ChunkType.SOUND
-]
+FILTERS = None
+
+
+# [
+#    ChunkType.SOUND
+# ]
 
 
 # https://stackoverflow.com/questions/51286748/make-the-python-json-encoder-support-pythons-new-dataclasses
@@ -48,18 +57,19 @@ def enforce_dir(path: str):
         pass
 
 
-def dump_all(root):
+def dump_all(root, dump_name):
     for directory, subdirs, files in walk(root):
         for file in files:
             path = join(directory, file)
             _, ext = splitext(path)
             if ext[1:] in bad_exts:
                 continue
-            pretty_path = path.replace(root, "...")
-            dump(path, pretty_path)
+            pretty_path = path.replace(dirname(root), "...")
+            dump(path, dump_name, pretty_path)
 
 
-def dump(path, pretty_path=None):
+def dump(path, dump_name, pretty_path=None):
+    resource_root, unknown_root, text_root = get_roots(dump_name)
     # print(pretty_path or path)
     with open(path, 'rb') as file:
         try:
@@ -75,8 +85,18 @@ def dump(path, pretty_path=None):
             print(pretty_path or path)
             print(f"\tUnparsable!")
             return
-        archive:Archive = archive
-        archive.load(file,filters=FILTERS)
+
+        print(archive.type)
+        if isinstance(archive, ZbbArchive):
+            archive.decompress(file)
+            with open(join(unknown_root, "decompressed", basename(path)), "wb") as w:
+                w.write(archive.data)
+            return
+
+        assert archive.type == ArchiveType.Folder, archive.type
+
+        archive: Archive = archive
+        archive.load(file, filters=FILTERS)
 
         def dump_json(p, o):
             b = json.dumps(o, indent=4, cls=EnhancedJSONEncoder)
@@ -101,22 +121,32 @@ def dump(path, pretty_path=None):
                 written = w.write(o)
                 print(f"\tCreated: \t{p}")
 
+        def slugify(p: str) -> str:
+            invalid = "<>:\"/\\|?*"
+            for i in invalid:
+                p = p.replace(i, "_")
+            return p
+
         print(pretty_path or path)
         for i, chunk in enumerate(archive.chunks):
             if isinstance(chunk, HTextChunk):
-                name = chunk.key.rstrip("\0") + f".HTEXT.{chunk.language.value.code}.json"
+                name = chunk.key.rstrip("\0") + f".HTEXT.{chunk.language.code}.json"
+                name = slugify(name)
                 dump_path = join(text_root, name)
                 enforce_dir(dirname(dump_path))
                 dump_json(dump_path, chunk)
 
             elif isinstance(chunk, ResourceListChunk):
                 name = pretty_path.replace("...\\", "")
+                name = slugify(name)
                 dump_path = join(unknown_root, name, f"Chunk [{i}]") + f".{chunk.header.type.value}.json"
+                enforce_dir(dirname(dump_path))
                 dump_json(dump_path, chunk)
 
             elif isinstance(chunk, ResourceChunk):
 
                 name = chunk.name.lstrip("/\\").rstrip("\0")
+                name = slugify(name)
                 # for spec_name in SPECIAL_NAMES:
                 #     if spec_name in name:
                 #         print(f"!!!! !!!! !!!! ~ {file.name}")
@@ -127,6 +157,7 @@ def dump(path, pretty_path=None):
             elif isinstance(chunk, SoundChunk):
                 for i, part in enumerate(chunk.clips):
                     name = part.name.lstrip("/\\").rstrip("\0")
+                    name = slugify(name)
                     # if SPECIAL_NAME in name:
                     #     print(f"!!!! !!!! !!!! ~ {file.name}")
                     dump_path = join(resource_root, name)
@@ -141,7 +172,7 @@ def dump(path, pretty_path=None):
                     dump_json(dump_path + ".json", meta)
 
             elif isinstance(chunk, RawChunk):
-                name = pretty_path.replace("...\\", "")
+                name = pretty_path.replace(f"...\\{dump_name}", "")
                 dump_path = join(unknown_root, name, f"Chunk [{i}].") + chunk.header.type.value
                 enforce_dir(dirname(dump_path))
                 dump_bytes(dump_path, chunk.data)
@@ -150,13 +181,27 @@ def dump(path, pretty_path=None):
 if __name__ == "__main__":
     launcher_root = r"G:\Clients\Steam\Launcher"
     steam_root = r"C:\Program Files (x86)\Steam"
-    local_root = fr"steamapps\common\Evil Genius 2"
+    eg_root = fr"steamapps\common\Evil Genius 2"
 
-    roots = [
-        join(launcher_root, local_root),
-        join(steam_root, local_root)
+    se_group_root = r"E:\Downloads\sniper elite"
+    se1_root = join(se_group_root, "Sniper Elite")
+    se2_root = join(se_group_root, "Sniper Elite V2")
+    se3_root = join(se_group_root, "Sniper Elite 3")
+    se4_root = join(se_group_root, "Sniper Elite 4")
+
+    eg_roots = [
+        join(launcher_root, eg_root),
+        join(steam_root, eg_root)
     ]
-    for root in roots:
+    for root in eg_roots:
         if exists(root):
-            dump_all(root)
+            dump_all(root, basename(root))
             break
+        else:
+            print(f"Cant dump '{root}', doesn't exist.")
+    se_roots = [se1_root, se2_root, se3_root, se4_root]
+    for root in se_roots:
+        if exists(root):
+            dump_all(root, basename(root))
+        else:
+            print(f"Cant dump '{root}', doesn't exist.")

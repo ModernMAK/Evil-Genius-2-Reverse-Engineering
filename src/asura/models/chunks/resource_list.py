@@ -8,23 +8,26 @@ from . import BaseChunk, ChunkHeader
 @dataclass
 class ResourceDescription:
     name: str = None
-    reserved_a: bytes = None
-    reserved_b: bytes = None
+    reserved_a: int = None
+    reserved_b: int = None
+    reserved_c:  int = None
 
     @staticmethod
     def read(stream: BinaryIO) -> 'ResourceDescription':
         with AsuraIO(stream) as reader:
             name = reader.read_utf8(padded=True)
-            ra = reader.read_word()
-            rb = reader.read_word()
-            return ResourceDescription(name, ra, rb)
+            ra = reader.read_int32()
+            rb = reader.read_int32()
+            rc = reader.read_int32()
+            return ResourceDescription(name, ra, rb, rc)
 
     def write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
                 writer.write_utf8(self.name, padded=True)
-                writer.write_word(self.reserved_a)
-                writer.write_word(self.reserved_b)
+                writer.write_int32(self.reserved_a)
+                writer.write_int32(self.reserved_b)
+                writer.write_int32(self.reserved_c)
             return written.length
 
 

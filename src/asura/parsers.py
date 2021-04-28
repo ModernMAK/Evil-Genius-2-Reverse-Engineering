@@ -9,7 +9,7 @@
 from typing import BinaryIO, Callable, Dict
 
 from .enums import ChunkType, ArchiveType
-from .models.archive import BaseChunk, ChunkHeader, Archive, BaseArchive
+from .models.archive import BaseChunk, ChunkHeader, Archive, BaseArchive, ZbbArchive
 
 #
 ParseChunk = Callable[[BinaryIO, ChunkHeader], BaseChunk]
@@ -35,7 +35,8 @@ class ChunkParser:
 class ArchiveParser:
     from .models.archive import Archive
     _map: Dict[ArchiveType, ParseArchive] = {
-        ArchiveType.Folder: Archive.read
+        ArchiveType.Folder: Archive.read,
+        ArchiveType.Zbb: ZbbArchive.read
     }
 
     @staticmethod

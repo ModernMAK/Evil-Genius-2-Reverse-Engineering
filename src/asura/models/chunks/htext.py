@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, BinaryIO
 
-from . import BaseChunk, ChunkHeader
+from . import BaseChunk, ChunkHeader, RawChunk
 from ...enums import LangCode
 from ...mio import AsuraIO, split_asura_richtext
 
@@ -57,8 +57,10 @@ class HTextChunk(BaseChunk):
 
     @classmethod
     def read(cls, stream: BinaryIO, header: ChunkHeader = None) -> 'HTextChunk':
-        if header is not None and header.version != cls.CURRENT_VERSION:
-            raise NotImplementedError
+        if header is not None:
+            if header.version != cls.CURRENT_VERSION:
+                print("!! HTEXT READ AS RAW !!")
+                return RawChunk.read(stream,header)
 
         with AsuraIO(stream) as reader:
             size = reader.read_int32()

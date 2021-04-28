@@ -1,10 +1,9 @@
-from .zlib_archive import ZlibHeader
-from .archive import Archive
 
+
+import asura.models.archive
 
 __all__ = [
-    "Archive",
-    "ZlibHeader",
+    "archive"
     "chunks"
 ]
 

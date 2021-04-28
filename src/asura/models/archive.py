@@ -1,15 +1,22 @@
+import os
+import tempfile
+import zlib
 from dataclasses import dataclass
+from io import BytesIO
 from typing import List, BinaryIO
 
 from .chunks import BaseChunk, ChunkHeader, UnparsedChunk
 from ..enums import ArchiveType, ChunkType
+from ..mio import AsuraIO
 
 
 @dataclass
 class BaseArchive:
     type: ArchiveType
+
     def write(self, stream: BinaryIO) -> int:
         raise NotImplementedError
+
 
 @dataclass
 class Archive(BaseArchive):
@@ -41,8 +48,6 @@ class Archive(BaseArchive):
         return result
 
     def write(self, stream: BinaryIO) -> int:
-        if self.type != ArchiveType.Folder:
-            raise NotImplementedError("Not Supported")
         written = 0
         written += self.type.write(stream)
         for chunk in self.chunks:
@@ -50,7 +55,7 @@ class Archive(BaseArchive):
             chunk_size += chunk.header.write(stream)
             if chunk.header.type != ChunkType.EOF:
                 chunk_size += chunk.write(stream)
-                chunk.header.overwrite_length(stream,chunk_size)
+                chunk.header.overwrite_length(stream, chunk_size)
             written += chunk_size
         return written
 
@@ -67,3 +72,63 @@ class Archive(BaseArchive):
                     self.chunks[i] = chunk.load(stream)
                     loaded = True
         return loaded
+
+
+# Compressed archives are pretty big; because of that ZbbArchive is mostly for reading meta information, or constructing the underlying archive
+@dataclass
+class ZbbArchive(BaseArchive):
+    size: int = None
+    compressed_size: int = None
+    _start: int = None
+
+    @classmethod
+    def read(cls, stream: BinaryIO, type: ArchiveType = None) -> 'ZbbArchive':
+        with AsuraIO(stream) as reader:
+            _compressed_size = reader.read_int64()
+            _size = reader.read_int64()
+            _start = stream.tell()
+            return ZbbArchive(type, _size, _compressed_size, _start)
+
+    def read_compressed(self, stream: BinaryIO) -> bytes:
+        with AsuraIO(stream) as util:
+            with util.bookmark() as _:
+                stream.seek(self._start, 0)
+                return stream.read(self.compressed_size)
+
+
+
+    @classmethod
+    def write_compressed(cls, stream: BinaryIO, archive:Archive) -> int:
+        with AsuraIO(stream) as writer:
+            with writer.byte_counter() as written:
+                writer.write_int64(self.compressed_size)
+                writer.write_int64(self.size)
+                writer.write(self.compressed)
+            return written.length
+
+    def decompress(self, stream: BinaryIO = None) -> 'Archive':
+        if not self.compressed:
+            self.load(stream)
+        if not self.data:
+            self.__decompress()
+        with BytesIO(self.data) as reader:
+            return Archive.read(reader, ArchiveType.Folder)
+
+    @classmethod
+    def compress(cls, archive: 'Archive') -> 'ZbbArchive':
+        with BytesIO() as writer:
+            size = archive.write(writer)
+        buffer = writer.read()
+        compressed = zlib.compress(buffer)
+        compressed_size = len(compressed)
+        return ZbbArchive(ArchiveType.Zbb, size, compressed_size, compressed=compressed)
+
+    def __decompress(self):
+        self.data = zlib.decompress(self.compressed)
+        if self._size is not None:
+            assert len(self.data) == self._size
+
+    def __compress(self):
+        self.compressed = zlib.compress(self.data)
+        if self._compressed_size is not None:
+            assert len(self.compressed) == self._compressed_size

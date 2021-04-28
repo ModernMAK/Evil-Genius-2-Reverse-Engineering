@@ -1,7 +1,8 @@
+import zlib
 from contextlib import contextmanager
 from typing import List, BinaryIO
 
-from .config import WORD_SIZE, INT32_SIZE, INT16_SIZE
+from .config import WORD_SIZE, INT32_SIZE, INT16_SIZE, INT64_SIZE
 
 
 def bytes_to_word_boundary(index: int, word_size: int) -> int:
@@ -35,6 +36,22 @@ class IORange:
         return self.end - self.start
 
 
+class ZLibIO:
+    def __init__(self, stream: BinaryIO, chunk_size:int = (1 << 16)):
+        self.stream = stream
+        self.chunk_size = chunk_size
+        self.compressor = zlib.compressobj()
+
+    def __enter__(self) -> 'AsuraIO':
+        return self
+
+    def __exit__(self, type, value, traceback):
+        pass
+
+    def compress(self):
+
+
+
 class AsuraIO:
     buffer_size: int = 64
     byte_order = "little"
@@ -63,6 +80,15 @@ class AsuraIO:
 
     def write(self, value: bytes) -> int:
         return self.stream.write(value)
+
+
+    def read_int64(self, signed: bool = None) -> int:
+        b = self.stream.read(INT64_SIZE)
+        return int.from_bytes(b, self.byte_order, signed=signed)
+
+    def write_int64(self, value: int, signed: bool = None) -> int:
+        b = int.to_bytes(value, INT64_SIZE, self.byte_order, signed=signed)
+        return self.stream.write(b)
 
     def read_int32(self, signed: bool = None) -> int:
         b = self.stream.read(INT32_SIZE)
@@ -203,6 +229,7 @@ class AsuraIO:
         if write_size:
             self.write_int32(len(encoded) // 2)
         return self.stream.write(encoded)
+
 
 
 def split_asura_richtext(raw_text: str) -> List[str]:

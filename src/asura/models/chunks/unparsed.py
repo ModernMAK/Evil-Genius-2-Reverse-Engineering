@@ -17,7 +17,7 @@ class UnparsedChunk(BaseChunk):
         if result is not None:
             current = stream.tell()
             expected = self.data_start + self.header.chunk_size
-            assert current == expected, f"CHUNK READ MISMATCH CURRENTLY @{current}, EXPECTED @{expected}"
+            assert current == expected, f"CHUNK READ MISMATCH CURRENTLY @{current}, EXPECTED @{expected}, {self.header.type}"
         else:
             raise ValueError("Result should have been assigned! Please check all code paths!")
         result.header = self.header
