@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, BinaryIO
+from typing import List, BinaryIO, Iterable
 
 from asura.enums import ChunkType, ArchiveType
 from asura.models.archive import BaseArchive
@@ -49,13 +49,27 @@ class FolderArchive(BaseArchive):
             written += chunk_size
         return written
 
+    def load_chunk_by_chunk(self, stream: BinaryIO, filters: List[ChunkType] = None) -> Iterable[BaseChunk]:
+        for chunk in self.chunks:
+            loaded = False
+            if filters is None or chunk.header.type in filters:
+                if isinstance(chunk, UnparsedChunk):
+                    loaded = True
+                    yield chunk.load(stream)
+            if not loaded:
+                yield chunk
+
+
     def load(self, stream: BinaryIO, filters: List[ChunkType] = None) -> bool:
         """
-        Loads all unread chunks. This is required
+        Loads all unread chunks. This is required before writing, editing or reading the chunk contents. This does not affect the chunk header.
         :param stream: A IO-like object, File/BinaryIO
-        :param filters: A list of chunk types to load
+        :param filters: A list of chunk types to load, None will load all chunks. To force no chunks to be loaded, use [] instead
+        :return True if any chunks were loaded
         """
         loaded = False
+        if filters is not None and len(filters) == 0:
+            return loaded
         for i, chunk in enumerate(self.chunks):
             if filters is None or chunk.header.type in filters:
                 if isinstance(chunk, UnparsedChunk):

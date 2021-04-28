@@ -8,7 +8,7 @@
 # # But because UnreadChunk relies on parser; we have this
 from typing import BinaryIO, Callable, Dict, Optional
 
-from .enums import ChunkType, ArchiveType
+from asura.enums import ChunkType, ArchiveType
 
 #
 from .error import ParsingError
@@ -20,7 +20,7 @@ ParseArchive = Callable[[BinaryIO, ArchiveType, bool], BaseArchive]
 
 
 class ChunkParser:
-    from .models.chunks import HTextChunk, SoundChunk, RawChunk, ResourceChunk, ResourceListChunk
+    from asura.models.chunks import HTextChunk, SoundChunk, RawChunk, ResourceChunk, ResourceListChunk
     _map: Dict[ChunkType, ParseChunk] = {
         ChunkType.H_TEXT: HTextChunk.read,
         ChunkType.SOUND: SoundChunk.read,

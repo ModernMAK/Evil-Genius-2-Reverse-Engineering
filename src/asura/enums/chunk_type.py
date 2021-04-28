@@ -34,6 +34,9 @@ class GenericChunkType:
         b = self.encode()
         return stream.write(b)
 
+    def __hash__(self):
+        return hash(self.value)
+
     def __str__(self):
         return self.name
 
@@ -42,6 +45,9 @@ class ChunkType(Enum):
     @classmethod
     def _type_layout(cls) -> Struct:
         return _TYPE_LAYOUT
+
+    def __hash__(self):
+        return hash(self.value)
 
     # The following are not enum values
     # Special Case ~ Denotes the end of the Archive

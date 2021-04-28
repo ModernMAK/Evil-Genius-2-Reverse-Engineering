@@ -1,47 +1,118 @@
 from io import BytesIO
+from typing import BinaryIO, Union
 
 from asura.enums import LangCode
 from asura.models.chunks import HText, HTextChunk
 
 LITTLE = "little"
 
-htext_raw = b"\x01\x00\x00\x00\xff\xfe\xfd\xfc.\x00\x00\x00\x00\x00\x00\x00\xef\xee\xed\xec\x16\x00\x00\x00T\x00h\x00i\x00s\x00 \x00i\x00s\x00 \x00a\x00 \x00h\x00t\x00e\x00x\x00t\x00 \x00t\x00e\x00s\x00t\x00.\x00\x00\x00TEST\x00\x00\x00\x00\x05\x00\x00\x00test\x00"
+# ??? ~ 4
+# DATA_SIZE ~ 4
+# DATA ~ DATA_SIZE
+htext_raw =b"\xef\xee\xed\xec" \
+          b"\x16\x00\x00\x00" \
+          b"T\x00h\x00i\x00s\x00 \x00i\x00s\x00 \x00a\x00 \x00h\x00t\x00e\x00x\x00t\x00 \x00t\x00e\x00s\x00t\x00.\x00\x00\x00"
 
-htext = HTextChunk(
+
+# PARTS ~ 4
+# ??? ~ 4
+# DATA_SIZE ~ 4
+# LANG ~ 4
+# DATA ~ DATA_SIZE + 8 * PARTS
+# KEYS_SIZE ~ 4
+# KEYS ~ KEYS_SIZE
+
+htext_chunk_raw = b"\x01\x00\x00\x00" \ 
+                  b"\xff\xfe\xfd\xfc" \ 
+                  b"\x2e\x00\x00\x00" \
+                  b"\x00\x00\x00\x00" \
+                  b"\xef\xee\xed\xec" \
+                  b"\x16\x00\x00\x00" \
+                  b"T\x00h\x00i\x00s\x00 \x00i\x00s\x00 \x00a\x00 \x00h\x00t\x00e\x00x\x00t\x00 \x00t\x00e\x00s\x00t\x00.\x00\x00\x00" \
+                  b"TEST\x00\x00\x00\x00" \
+                  b"\x05\x00\x00\x00" \
+                  b"test\x00"
+
+def create_raw_htext_from_full(t:HText) -> HText:
+    return HText(None,[v for v in t.text] if t.text else None,t.unknown)
+htext = HText("test", ["This is a htext test."], int.from_bytes(b"\xef\xee\xed\xec", "little"))
+htext_from_raw = create_raw_htext_from_full(htext)
+htext_chunk = HTextChunk(
     key="TEST",
-    parts=[HText("test",
-           ["This is a htext test."],
-           int.from_bytes(b"\xef\xee\xed\xec","little"))],
+    parts=[htext],
     word_a=b"\xff\xfe\xfd\xfc",
     data_byte_length=46,
     language=LangCode.ENGLISH)
 
 
-def test_htext_write():
-    with BytesIO() as writer:
-        htext.write(writer)
-        writer.seek(0)
-        buffer = writer.read()
-        for i, (a, b) in enumerate(zip(buffer, htext_raw)):
-            assert a == b, f"@{i}\n\t{buffer}\n\t{htext_raw}"
+def assert_bytes(value: Union[bytes, BinaryIO], expected: bytes):
+    if isinstance(value, BinaryIO):
+        value.seek(0)
+        value = value.read()
+    for (a, b) in zip(value, expected):
+        assert a == b
 
 
-def test_htext_read():
-    with BytesIO(htext_raw) as reader:
+def assert_htext(value: HText, expected: HText):
+    assert value.size == expected.size
+    assert value.key == expected.key    
+    assert value.raw_text == expected.raw_text
+    assert value.unknown == expected.unknown
+
+
+def assert_htext_chunk(value: HTextChunk, expected: HTextChunk):
+    assert value.key == expected.key
+    assert value.word_a == expected.word_a
+    assert value.language == expected.language
+    assert value.data_byte_length == expected.data_byte_length
+    assert value.size == expected.size
+    for v, e in zip(value.parts, expected.parts):
+        assert_htext(v,e)
+
+
+
+def test_chunk_read():
+    with BytesIO(htext_chunk_raw) as reader:
         chunk = HTextChunk.read(reader)
-        assert chunk.size == htext.size, f"SIZE MISMATCH"
-        assert chunk.key == htext.key, f"KEY MISMATCH"
-        assert chunk.word_a == htext.word_a, f"WORD A MISMATCH"
-        assert chunk.data_byte_length == htext.data_byte_length, f"DATA BYTE LEN MISMATCH"
-        assert chunk.language == htext.language, f"LANG MISMATCH"
+        assert_htext_chunk(chunk, htext_chunk)
 
-# def test_asts_read_writeback():
-#     with BytesIO(asts_raw) as reader:
-#         chunk = AudioStreamSoundChunk.read(reader)
-#
-#     with BytesIO() as writer:
-#         chunk.write(writer)
-#         writer.seek(0)
-#         buffer = writer.read()
-#         for i, (a, b) in enumerate(zip(buffer, asts_raw)):
-#             assert a == b, f"@{i}\n\t{buffer}\n\t{asts_raw}"
+    for v, e in zip(chunk.parts, htext_chunk.parts):
+        assert_htext(v, e)
+
+
+def test_chunk_read_writeback():
+    with BytesIO(htext_chunk_raw) as reader:
+        chunk = HTextChunk.read(reader)
+
+    with BytesIO() as writer:
+        chunk.write(writer)
+        assert_bytes(writer, htext_chunk_raw)
+
+
+
+
+def test_chunk_write_readback():
+    with BytesIO() as writer:
+        htext_chunk.write(writer)
+        writer.seek(0)
+        value = HTextChunk.read(writer)
+        assert_htext_chunk(value, htext_chunk)
+
+
+def test_clip_read_writeback():
+    with BytesIO(htext_raw) as reader:
+        part = HText.read(reader)
+
+    with BytesIO() as writer:
+        part.write(writer)
+        assert_bytes(writer, htext_raw)
+
+
+def test_clip_write_readback():
+    with BytesIO() as writer:
+        htext_from_raw.write(writer)
+
+        writer.seek(0)
+        read = HText.read(writer)
+
+    assert_htext(read, htext_from_raw)

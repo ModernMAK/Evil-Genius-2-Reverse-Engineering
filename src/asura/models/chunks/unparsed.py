@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import BinaryIO
 
-from . import BaseChunk
+from asura.models.chunks import BaseChunk
 
 
 @dataclass
@@ -17,7 +17,10 @@ class UnparsedChunk(BaseChunk):
         if result is not None:
             current = stream.tell()
             expected = self.data_start + self.header.chunk_size
-            assert current == expected, f"CHUNK READ MISMATCH CURRENTLY @{current}, EXPECTED @{expected}, {self.header.type}"
+            try:
+                assert current == expected, f"CHUNK READ MISMATCH CURRENTLY @{current}, EXPECTED @{expected}, {self.header.type}, D:{current-expected}"
+            except AssertionError as e:
+                print(f"This chunk may be corrupted; or my format is improper:\t\t{e}")
         else:
             raise ValueError("Result should have been assigned! Please check all code paths!")
         result.header = self.header

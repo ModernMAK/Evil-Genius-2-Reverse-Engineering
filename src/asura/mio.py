@@ -188,10 +188,16 @@ class AsuraIO:
 
         padding = bytes_to_word_boundary(size, WORD_SIZE) if padded else 0
         value = self.stream.read(size + padding)
+        if padding > 0:
+            # strip padding
+            value = value[:-padding]
 
         if strip_terminal:
             value = value.rstrip("\x00".encode())
-        return value.decode("utf-8")
+            try:
+                return value.decode("utf-8")
+            except UnicodeDecodeError as e:
+                raise IOError(f"Cannot read utf8: {repr(value)}") from e
 
     def write_utf8(self, value: str, *, padded=False, enforce_terminal=True, write_size=False) -> int:
         if enforce_terminal:
@@ -248,6 +254,9 @@ class AsuraIO:
 
         padding = bytes_to_word_boundary(size, WORD_SIZE) if padded else 0
         value = bytearray(self.stream.read(size + padding))
+        if padding > 0:
+            # strip padding
+            value = value[:-padding]
         decoded = value.decode("utf-16le")
         if strip_terminal:
             decoded = decoded.rstrip("\x00")
