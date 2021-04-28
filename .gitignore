@@ -1,9 +1,11 @@
 # Ignore all files in dump; these are files extracted from ASURA Resource files files
-dump/*
+dump/
 # Ignore virtual environment
-venv/*
+venv/
 __pycache__/
 # Ignore Pycharm
-.idea/*
+.idea/
 # Ignore 3rd party software
-depends/*
+depends/
+#Ignore pytest
+.pytest_cache/
