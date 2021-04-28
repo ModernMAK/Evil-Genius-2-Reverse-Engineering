@@ -144,14 +144,14 @@ class AsuraIO:
         b = int.to_bytes(value, INT16_SIZE, self.byte_order, signed=signed)
         return self.stream.write(b)
 
-    def read_bool(self) -> bool:
+    def read_bool(self, strict: bool = True) -> bool:
         b = self.read_byte()
         if b[0] == 0x00:
             return False
-        elif b[0] == 0x01:
+        elif not strict or b[0] == 0x01:
             return True
         else:
-            raise NotImplementedError(b)
+            raise ValueError("Unexpected byte for strict bool!", b[0])
 
     def write_bool(self, value: bool) -> int:
         return self.write_byte(bytes([0x01]) if value else bytes([0x00]))

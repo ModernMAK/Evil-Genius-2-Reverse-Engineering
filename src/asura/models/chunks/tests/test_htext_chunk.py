@@ -1,7 +1,7 @@
 from io import BytesIO
 
-from src.asura.enums import LangCode
-from src.asura.models.chunks import HText, HTextChunk
+from asura.enums import LangCode
+from asura.models.chunks import HText, HTextChunk
 
 LITTLE = "little"
 
