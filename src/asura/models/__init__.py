@@ -1,10 +1,6 @@
-
-
-
 __all__ = [
-    "archive"
+    "archive",
     "chunks"
 ]
 
-from src.asura.models import archive
 

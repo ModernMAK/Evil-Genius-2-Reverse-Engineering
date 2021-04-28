@@ -6,16 +6,17 @@
 #
 # # These types are only used for type annotations; they are supposed to be from .enum and .model
 # # But because UnreadChunk relies on parser; we have this
-from typing import BinaryIO, Callable, Dict
+from typing import BinaryIO, Callable, Dict, Optional
 
 from .enums import ChunkType, ArchiveType
 
 #
+from .error import ParsingError
 from .models.archive import BaseArchive
 from .models.chunks import ChunkHeader, BaseChunk
 
 ParseChunk = Callable[[BinaryIO, ChunkHeader], BaseChunk]
-ParseArchive = Callable[[BinaryIO, ArchiveType], BaseArchive]
+ParseArchive = Callable[[BinaryIO, ArchiveType, bool], BaseArchive]
 
 
 class ChunkParser:
@@ -42,11 +43,15 @@ class ArchiveParser:
     }
 
     @staticmethod
-    def _default(stream: BinaryIO, type: ArchiveType) -> BaseArchive:
+    def _default(stream: BinaryIO, type: ArchiveType, sparse:bool) -> BaseArchive:
         return BaseArchive(type)
 
     @classmethod
-    def parse(cls, stream: BinaryIO) -> BaseArchive:
-        type = ArchiveType.read(stream)
+    def parse(cls, stream: BinaryIO, sparse:bool=True) -> Optional[BaseArchive]:
+        try:
+            type = ArchiveType.read(stream)
+        except ParsingError:
+            return None
+
         parser = cls._map.get(type, cls._default)
-        return parser(stream, type)
+        return parser(stream, type, sparse)

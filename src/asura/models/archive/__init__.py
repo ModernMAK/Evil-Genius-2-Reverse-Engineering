@@ -1,6 +1,3 @@
-from .base import BaseArchive
-from .folder import FolderArchive
-from .zbb import ZbbChunk, ZbbArchive
 
 __all__ = [
     'BaseArchive',
@@ -8,3 +5,9 @@ __all__ = [
     "ZbbArchive",
     "ZbbChunk"
 ]
+
+from asura.models.archive.base import BaseArchive
+
+from asura.models.archive.folder import FolderArchive
+
+from asura.models.archive.zbb import ZbbArchive, ZbbChunk

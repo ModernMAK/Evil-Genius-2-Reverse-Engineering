@@ -5,7 +5,7 @@ from typing import BinaryIO, List
 
 from asura.enums import ArchiveType
 from asura.mio import AsuraIO, ZLibIO
-from asura.models.archive.base import BaseArchive
+from asura.models.archive import BaseArchive
 
 
 @dataclass
@@ -49,7 +49,7 @@ class ZbbArchive(BaseArchive):
     chunks: List[ZbbChunk] = None
 
     @classmethod
-    def read(cls, stream: BinaryIO, type: ArchiveType = None) -> 'ZbbArchive':
+    def read(cls, stream: BinaryIO, type: ArchiveType = None, sparse:bool=True) -> 'ZbbArchive':
         with AsuraIO(stream) as reader:
             _compressed_size = reader.read_int32()
             _size = reader.read_int32()
@@ -64,7 +64,8 @@ class ZbbArchive(BaseArchive):
         with AsuraIO(in_stream) as t:
             with t.bookmark():
                 decompressed_size_total = 0
-                for chunk in self.chunks:
+                for i, chunk in enumerate(self.chunks):
+                    print(f"\tDecompressing Chunk [{i + 1} / {len(self.chunks)}]")
                     in_stream.seek(chunk._start)
                     with ZLibIO(in_stream) as decompressor:
                         decompressed_size = decompressor.decompress(out_stream, self.compressed_size)
@@ -77,7 +78,8 @@ class ZbbArchive(BaseArchive):
         with BytesIO() as temp_stream:
             self.decompress_to_stream(in_stream, temp_stream)
             temp_stream.seek(0)
-            return ArchiveParser.parse(temp_stream)
+            return ArchiveParser.parse(temp_stream, sparse=False)
+
 
     @staticmethod
     def compress_to_stream(in_stream: BinaryIO, out_stream: BinaryIO) -> int:

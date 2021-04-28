@@ -2,8 +2,9 @@ from dataclasses import dataclass
 from struct import Struct
 from typing import BinaryIO
 
-from src.asura.enums import ChunkType
-from src.asura.mio import AsuraIO
+from asura.enums import ChunkType
+from asura.error import ParsingError
+from asura.mio import AsuraIO
 
 
 @dataclass

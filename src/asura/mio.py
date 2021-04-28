@@ -2,7 +2,7 @@ import zlib
 from contextlib import contextmanager
 from typing import List, BinaryIO, Generator, Iterable
 
-from .config import WORD_SIZE, INT32_SIZE, INT16_SIZE, INT64_SIZE, MEBI_BYTE, GIBI_BYTE
+from asura.config import MEBI_BYTE, INT64_SIZE, INT32_SIZE, INT16_SIZE, WORD_SIZE
 
 
 def bytes_to_word_boundary(index: int, word_size: int) -> int:
@@ -80,6 +80,7 @@ class ZLibIO:
         if not size:
             size = self._calc_stream_size(self.stream)
         written = 0
+
         for chunk_bytes in self._calc_chunk_sizes(size):
             compressed_chunk = self.stream.read(chunk_bytes)
             chunk = self.decompressor.decompress(compressed_chunk)

@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import List, BinaryIO
 
-from src.asura.mio import AsuraIO
-from . import BaseChunk, ChunkHeader
+from asura.mio import AsuraIO
+from asura.models.chunks import BaseChunk, ChunkHeader
 
 
 @dataclass

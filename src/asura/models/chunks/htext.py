@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import List, BinaryIO
 
-from . import BaseChunk, ChunkHeader, RawChunk
-from ...enums import LangCode
-from ...mio import AsuraIO, split_asura_richtext
+from asura.enums import LangCode
+from asura.mio import AsuraIO, split_asura_richtext
+from asura.models.chunks import ChunkHeader, BaseChunk, RawChunk
 
 
 @dataclass

@@ -6,10 +6,9 @@ from os import walk, stat
 from os.path import join, dirname, exists, splitext, basename
 
 from asura.enums import ArchiveType
-from src.asura.enums import ChunkType
-from src.asura.models.archive import BaseArchive, FolderArchive, ZbbArchive
-from src.asura.models.chunks import HTextChunk, ResourceChunk, RawChunk, ResourceListChunk, SoundChunk
-from src.asura.parsers import ChunkParser, ArchiveParser
+from asura.models.archive import BaseArchive, FolderArchive, ZbbArchive
+from asura.models.chunks import HTextChunk, ResourceChunk, RawChunk, ResourceListChunk, SoundChunk
+from asura.parsers import ArchiveParser
 
 dump_root = "dump"
 
@@ -30,7 +29,7 @@ SPECIAL_NAMES = [
     "MUS_Action_02.wav",
 ]
 VERBOSE = False
-FILTERS = None
+FILTERS = []
 
 
 # [
@@ -78,28 +77,34 @@ def dump(path, dump_name, pretty_path=None):
             print(pretty_path or path)
             print(f"\tERROR [{type(e).__name__}]: ", end="")
             print(e)
-            # raise
-            return
+            raise
 
-        if archive is None or type(archive) == BaseArchive:
+        if archive is None:
             print(pretty_path or path)
-            print(f"\tUnparsable!")
+            print(f"\tNot an Archive!")
+            return
+        if type(archive) == BaseArchive:
+            print(pretty_path or path)
+            print(f"\tNot Implimented! '{archive.type}'")
             return
 
-        print(archive.type)
+        print(pretty_path or path)
         if isinstance(archive, ZbbArchive):
-            print(path)
             out_path = join(unknown_root, "decompressed", basename(path))
-            enforce_dir(dirname(out_path))
-            if not exists(out_path) or REDUMP_COMPRESSED:
-                decomp_archive = archive.decompress(file)
-                with open(out_path, "wb") as out_file:
-                    decomp_archive.write(out_file)
-                archive = decomp_archive
-            else:
-                return
+            name, ext = splitext(out_path)
+            decomp_path = name + ".decompressed" + ext
 
-        assert archive.type == ArchiveType.Folder, archive.type
+            enforce_dir(dirname(decomp_path))
+            if not exists(decomp_path) or REDUMP_COMPRESSED:
+                with open(decomp_path, "wb") as decomp_file:
+                    archive.decompress_to_stream(file, decomp_file)
+
+
+            enforce_dir(dirname(out_path))
+            with open(decomp_path, "rb") as decomp_file:
+                archive = ArchiveParser.parse(decomp_file)
+                if archive.type != ArchiveType.Folder:
+                    return
 
         archive: FolderArchive = archive
         archive.load(file, filters=FILTERS)
@@ -133,18 +138,17 @@ def dump(path, dump_name, pretty_path=None):
                 p = p.replace(i, "_")
             return p
 
-        print(pretty_path or path)
         for i, chunk in enumerate(archive.chunks):
             if isinstance(chunk, HTextChunk):
                 name = chunk.key.rstrip("\0") + f".HTEXT.{chunk.language.code}.json"
-                name = slugify(name)
+                name = join(dirname(name),slugify(basename(name)))
                 dump_path = join(text_root, name)
                 enforce_dir(dirname(dump_path))
                 dump_json(dump_path, chunk)
 
             elif isinstance(chunk, ResourceListChunk):
                 name = pretty_path.replace("...\\", "")
-                name = slugify(name)
+                name = join(dirname(name),slugify(basename(name)))
                 dump_path = join(unknown_root, name, f"Chunk [{i}]") + f".{chunk.header.type.value}.json"
                 enforce_dir(dirname(dump_path))
                 dump_json(dump_path, chunk)
@@ -152,7 +156,7 @@ def dump(path, dump_name, pretty_path=None):
             elif isinstance(chunk, ResourceChunk):
 
                 name = chunk.name.lstrip("/\\").rstrip("\0")
-                name = slugify(name)
+                name = join(dirname(name),slugify(basename(name)))
                 # for spec_name in SPECIAL_NAMES:
                 #     if spec_name in name:
                 #         print(f"!!!! !!!! !!!! ~ {file.name}")
@@ -163,7 +167,7 @@ def dump(path, dump_name, pretty_path=None):
             elif isinstance(chunk, SoundChunk):
                 for i, part in enumerate(chunk.clips):
                     name = part.name.lstrip("/\\").rstrip("\0")
-                    name = slugify(name)
+                    name = join(dirname(name),slugify(basename(name)))
                     # if SPECIAL_NAME in name:
                     #     print(f"!!!! !!!! !!!! ~ {file.name}")
                     dump_path = join(resource_root, name)
@@ -179,6 +183,7 @@ def dump(path, dump_name, pretty_path=None):
 
             elif isinstance(chunk, RawChunk):
                 name = pretty_path.replace(f"...\\{dump_name}", "")
+                name = join(dirname(name),slugify(basename(name)))
                 dump_path = join(unknown_root, name, f"Chunk [{i}].") + chunk.header.type.value
                 enforce_dir(dirname(dump_path))
                 dump_bytes(dump_path, chunk.data)

@@ -1,13 +1,15 @@
 from dataclasses import dataclass
 from typing import List, BinaryIO
 
-from ...mio import AsuraIO
-from . import BaseChunk, ChunkHeader
 
 # THESE FILES APPEAR TO BE MS-ADPCM
 # WAVE FORMAT CODES AREN'T PROPRIETARY, THEIR STANDARDIZED
 # BUT ITS STILL IMPOSSIBLE TO GOOGLE THEM
 # https://www.codeproject.com/Questions/143294/WAV-file-compression-format-codes
+from asura.mio import AsuraIO
+from asura.models.chunks import ChunkHeader, BaseChunk
+
+
 @dataclass
 class SoundClip:
     name: str = None

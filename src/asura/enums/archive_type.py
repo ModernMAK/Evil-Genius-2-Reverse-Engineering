@@ -16,11 +16,14 @@ class ArchiveType(Enum):
 
     @classmethod
     def decode(cls, b: bytes) -> 'ArchiveType':
-        v = b.decode()
         try:
-            return enum_value_to_enum(v, ArchiveType)
-        except KeyError:
-            raise EnumDecodeError(cls, v, [e.value for e in cls])
+            v = b.decode()
+            try:
+                return enum_value_to_enum(v, ArchiveType)
+            except KeyError as e:
+                raise EnumDecodeError(cls, v, [e.value for e in cls]) from e
+        except UnicodeDecodeError as e:
+            raise EnumDecodeError(cls, b, [e.value for e in cls]) from e
 
     @classmethod
     def read(cls, stream: BinaryIO) -> 'ArchiveType':

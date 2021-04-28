@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import List, BinaryIO
 
-from asura.enums import ArchiveType, ChunkType
-from asura.models.archive.base import BaseArchive
+from asura.enums import ChunkType, ArchiveType
+from asura.models.archive import BaseArchive
 from asura.models.chunks import BaseChunk, ChunkHeader, UnparsedChunk
 
 
@@ -11,25 +11,27 @@ class FolderArchive(BaseArchive):
     chunks: List[BaseChunk]
 
     @staticmethod
-    def _read_chunk(stream: BinaryIO) -> BaseChunk:
+    def _read_chunk(stream: BinaryIO, sparse:bool=True) -> BaseChunk:
+        start = stream.tell()
         header = ChunkHeader.read(stream)
         # Always return EOF
         if header.type == ChunkType.EOF:
             return BaseChunk(header)
-
         result = UnparsedChunk(header, stream.tell())
-        stream.seek(header.chunk_size, 1)
+        if not sparse:
+            result = result.load(stream)
+        stream.seek(start + header.length, 0)
         return result
 
     @classmethod
-    def read(cls, stream: BinaryIO, type: ArchiveType = None) -> 'FolderArchive':
+    def read(cls, stream: BinaryIO, type: ArchiveType = None, sparse:bool=True) -> 'FolderArchive':
         if not type:
             type = ArchiveType.read(stream)
         if type != ArchiveType.Folder:
-            raise NotImplementedError("Not Supported")
+            raise NotImplementedError(f"Not Supported ~ {type}")
         result = FolderArchive(type, [])
         while True:
-            chunk = cls._read_chunk(stream)
+            chunk = cls._read_chunk(stream,sparse)
             result.chunks.append(chunk)
             if chunk.header.type == ChunkType.EOF:
                 break
