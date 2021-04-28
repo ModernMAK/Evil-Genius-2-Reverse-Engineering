@@ -7,7 +7,7 @@ from typing import List, BinaryIO
 
 from .chunks import BaseChunk, ChunkHeader, UnparsedChunk
 from ..enums import ArchiveType, ChunkType
-from ..mio import AsuraIO
+from ..mio import AsuraIO, ZLibIO
 
 
 @dataclass
@@ -95,40 +95,38 @@ class ZbbArchive(BaseArchive):
                 stream.seek(self._start, 0)
                 return stream.read(self.compressed_size)
 
+    def decompress(self, stream:BinaryIO) -> 'Archive':
+        pass
+
+    def decompress_to_stream(self, in_stream: BinaryIO, out_stream:BinaryIO):
+        with AsuraIO(in_stream) as t:
+            with t.bookmark():
+                in_stream.seek(self._start)
+                with ZLibIO(in_stream) as decompressor:
+                    decompressed_size = decompressor.decompress(out_stream, self.compressed_size)
+                    assert self.size == decompressed_size
 
 
-    @classmethod
-    def write_compressed(cls, stream: BinaryIO, archive:Archive) -> int:
-        with AsuraIO(stream) as writer:
-            with writer.byte_counter() as written:
-                writer.write_int64(self.compressed_size)
-                writer.write_int64(self.size)
-                writer.write(self.compressed)
-            return written.length
 
-    def decompress(self, stream: BinaryIO = None) -> 'Archive':
-        if not self.compressed:
-            self.load(stream)
-        if not self.data:
-            self.__decompress()
-        with BytesIO(self.data) as reader:
-            return Archive.read(reader, ArchiveType.Folder)
+    def compress(self, in_stream:BinaryIO, out_stream:BinaryIO):
+        pass
 
-    @classmethod
-    def compress(cls, archive: 'Archive') -> 'ZbbArchive':
-        with BytesIO() as writer:
-            size = archive.write(writer)
-        buffer = writer.read()
-        compressed = zlib.compress(buffer)
-        compressed_size = len(compressed)
-        return ZbbArchive(ArchiveType.Zbb, size, compressed_size, compressed=compressed)
-
-    def __decompress(self):
-        self.data = zlib.decompress(self.compressed)
-        if self._size is not None:
-            assert len(self.data) == self._size
-
-    def __compress(self):
-        self.compressed = zlib.compress(self.data)
-        if self._compressed_size is not None:
-            assert len(self.compressed) == self._compressed_size
+    #
+    # @classmethod
+    # def compress(cls, archive: 'Archive') -> 'ZbbArchive':
+    #     with BytesIO() as writer:
+    #         size = archive.write(writer)
+    #     buffer = writer.read()
+    #     compressed = zlib.compress(buffer)
+    #     compressed_size = len(compressed)
+    #     return ZbbArchive(ArchiveType.Zbb, size, compressed_size, compressed=compressed)
+    #
+    # def __decompress(self):
+    #     self.data = zlib.decompress(self.compressed)
+    #     if self._size is not None:
+    #         assert len(self.data) == self._size
+    #
+    # def __compress(self):
+    #     self.compressed = zlib.compress(self.data)
+    #     if self._compressed_size is not None:
+    #         assert len(self.compressed) == self._compressed_size

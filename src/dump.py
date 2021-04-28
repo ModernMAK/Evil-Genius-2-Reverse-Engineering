@@ -88,10 +88,11 @@ def dump(path, dump_name, pretty_path=None):
 
         print(archive.type)
         if isinstance(archive, ZbbArchive):
-            archive.decompress(file)
-            with open(join(unknown_root, "decompressed", basename(path)), "wb") as w:
-                w.write(archive.data)
-            return
+            out_path = join(unknown_root, "decompressed", basename(path))
+            enforce_dir(dirname(out_path))
+            with open(out_path, "wb") as out_file:
+                archive.decompress_to_stream(file, out_file)
+                return
 
         assert archive.type == ArchiveType.Folder, archive.type
 

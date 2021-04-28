@@ -1,8 +1,8 @@
 import zlib
 from contextlib import contextmanager
-from typing import List, BinaryIO
+from typing import List, BinaryIO, Generator, Iterable
 
-from .config import WORD_SIZE, INT32_SIZE, INT16_SIZE, INT64_SIZE
+from .config import WORD_SIZE, INT32_SIZE, INT16_SIZE, INT64_SIZE, MEBI_BYTE, GIBI_BYTE
 
 
 def bytes_to_word_boundary(index: int, word_size: int) -> int:
@@ -37,19 +37,63 @@ class IORange:
 
 
 class ZLibIO:
-    def __init__(self, stream: BinaryIO, chunk_size:int = (1 << 16)):
+    # Chunk
+    def __init__(self, stream: BinaryIO, chunk_size: int = GIBI_BYTE):
         self.stream = stream
         self.chunk_size = chunk_size
         self.compressor = zlib.compressobj()
+        self.decompressor = zlib.decompressobj()
 
-    def __enter__(self) -> 'AsuraIO':
+    def __enter__(self) -> 'ZLibIO':
         return self
 
     def __exit__(self, type, value, traceback):
         pass
 
-    def compress(self):
 
+
+    def _calc_chunk_sizes(self, size: int) -> Iterable[int]:
+        for _ in range(size // self.chunk_size):
+            yield self.chunk_size
+        remainder = size % self.chunk_size
+        if remainder != 0:
+            yield remainder
+
+    @staticmethod
+    def _calc_stream_size(stream: BinaryIO) -> int:
+        bookmark = stream.tell()
+        stream.seek(0, 2)  # Seek to end
+        size = stream.tell()
+        stream.seek(bookmark)
+        return size
+
+    def compress(self, stream: BinaryIO, size: int = None) -> int:
+        if not size:
+            size = self._calc_stream_size(stream)
+
+        written = 0
+        for chunk_bytes in self._calc_chunk_sizes(size):
+            chunk = stream.read(chunk_bytes)
+            compressed_chunk = self.compressor.compress(chunk)
+            written += self.stream.write(compressed_chunk)
+        return written
+
+    def decompress(self, stream: BinaryIO, size: int = None, flush:bool=True) -> int:
+        if not size:
+            size = self._calc_stream_size(self.stream)
+        ct = size // self.chunk_size + 1
+        c = 0
+        written = 0
+        for chunk_bytes in self._calc_chunk_sizes(size):
+            print(f"\tChunk [{c} / {ct}]")
+            c += 1
+            compressed_chunk = self.stream.read(chunk_bytes)
+            chunk = self.decompressor.decompress(compressed_chunk)
+            written += stream.write(chunk)
+        if flush:
+            written += stream.write(self.decompressor.flush())
+            del self.decompressor
+        return written
 
 
 class AsuraIO:
@@ -80,7 +124,6 @@ class AsuraIO:
 
     def write(self, value: bytes) -> int:
         return self.stream.write(value)
-
 
     def read_int64(self, signed: bool = None) -> int:
         b = self.stream.read(INT64_SIZE)
@@ -113,11 +156,10 @@ class AsuraIO:
         elif b[0] == 0x01:
             return True
         else:
-            raise NotImplementedError (b)
+            raise NotImplementedError(b)
 
     def write_bool(self, value: bool) -> int:
         return self.write_byte(bytes([0x01]) if value else bytes([0x00]))
-
 
     def read_byte(self) -> bytes:
         return self.stream.read(1)
@@ -229,7 +271,6 @@ class AsuraIO:
         if write_size:
             self.write_int32(len(encoded) // 2)
         return self.stream.write(encoded)
-
 
 
 def split_asura_richtext(raw_text: str) -> List[str]:
