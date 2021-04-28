@@ -38,7 +38,7 @@ class IORange:
 
 class ZLibIO:
     # Chunk
-    def __init__(self, stream: BinaryIO, chunk_size: int = GIBI_BYTE):
+    def __init__(self, stream: BinaryIO, chunk_size: int = 2 * MEBI_BYTE):
         self.stream = stream
         self.chunk_size = chunk_size
         self.compressor = zlib.compressobj()
@@ -49,8 +49,6 @@ class ZLibIO:
 
     def __exit__(self, type, value, traceback):
         pass
-
-
 
     def _calc_chunk_sizes(self, size: int) -> Iterable[int]:
         for _ in range(size // self.chunk_size):
@@ -78,15 +76,11 @@ class ZLibIO:
             written += self.stream.write(compressed_chunk)
         return written
 
-    def decompress(self, stream: BinaryIO, size: int = None, flush:bool=True) -> int:
+    def decompress(self, stream: BinaryIO, size: int = None, flush: bool = True) -> int:
         if not size:
             size = self._calc_stream_size(self.stream)
-        ct = size // self.chunk_size + 1
-        c = 0
         written = 0
         for chunk_bytes in self._calc_chunk_sizes(size):
-            print(f"\tChunk [{c} / {ct}]")
-            c += 1
             compressed_chunk = self.stream.read(chunk_bytes)
             chunk = self.decompressor.decompress(compressed_chunk)
             written += stream.write(chunk)

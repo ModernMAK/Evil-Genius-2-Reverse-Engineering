@@ -7,7 +7,7 @@ from os.path import join, dirname, exists, splitext, basename
 
 from asura.enums import ArchiveType
 from src.asura.enums import ChunkType
-from src.asura.models.archive import BaseArchive, Archive, ZbbArchive
+from src.asura.models.archive import BaseArchive, FolderArchive, ZbbArchive
 from src.asura.models.chunks import HTextChunk, ResourceChunk, RawChunk, ResourceListChunk, SoundChunk
 from src.asura.parsers import ChunkParser, ArchiveParser
 
@@ -20,7 +20,7 @@ def get_roots(local_root):
     text_root = join(dump_root, local_root, "text")
     return resource_root, unknown_root, text_root
 
-
+REDUMP_COMPRESSED = False
 bad_exts = ["exe", "dll", "txt", "webm", "bik"]
 SPECIAL_NAMES = [
     "MUS_Tranquil_02.wav",
@@ -88,15 +88,20 @@ def dump(path, dump_name, pretty_path=None):
 
         print(archive.type)
         if isinstance(archive, ZbbArchive):
+            print(path)
             out_path = join(unknown_root, "decompressed", basename(path))
             enforce_dir(dirname(out_path))
-            with open(out_path, "wb") as out_file:
-                archive.decompress_to_stream(file, out_file)
+            if not exists(out_path) or REDUMP_COMPRESSED:
+                decomp_archive = archive.decompress(file)
+                with open(out_path, "wb") as out_file:
+                    decomp_archive.write(out_file)
+                archive = decomp_archive
+            else:
                 return
 
         assert archive.type == ArchiveType.Folder, archive.type
 
-        archive: Archive = archive
+        archive: FolderArchive = archive
         archive.load(file, filters=FILTERS)
 
         def dump_json(p, o):

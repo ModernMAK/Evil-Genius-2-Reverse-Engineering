@@ -3,7 +3,7 @@ from os import walk
 from os.path import join, splitext, exists
 
 from src.asura.enums import ChunkType
-from src.asura.models.archive import BaseArchive, Archive
+from src.asura.models.archive import BaseArchive, FolderArchive
 from src.asura.models.chunks import SoundChunk, SoundClip, ResourceChunk
 from src.asura.parsers import ArchiveParser
 
@@ -37,9 +37,9 @@ def do(path) -> bool:
         except (UnicodeDecodeError, ValueError, AssertionError) as e:
             print(f"\t{e}")
             return False
-        if archive is None or type(archive) != Archive:
+        if archive is None or type(archive) != FolderArchive:
             return False
-        archive: Archive = archive
+        archive: FolderArchive = archive
         if not archive.load(reader, [ChunkType.SOUND,ChunkType.RESOURCE]):  # If any sound chunks are loaded
             return False
 

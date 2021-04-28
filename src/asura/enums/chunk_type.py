@@ -56,6 +56,11 @@ class ChunkType(Enum):
     UNKNOWN_ATIG = "ATIG"
     UNKNOWN_stsy = "stsy"
     UNKNOWN_ttsy = "ttsy"
+    UNKNOWN_PBRV = "PBRV"
+    UNKNOWN_IRTX = "IRTX"
+    UNKNOWN_COMA = "COMA"
+    UNKNOWN_SDSM = "SDSM"
+
     # SUBTITLE = "fmvs"
 
     # EG2 exclusive formats
@@ -70,6 +75,8 @@ class ChunkType(Enum):
         try:
             return enum_value_to_enum(v, ChunkType)
         except KeyError:
+            if len(v) == 4 and v.isalpha():
+                return ChunkType(v)
             raise EnumDecodeError(cls, v, [e.value for e in cls])
 
     @classmethod
@@ -78,8 +85,10 @@ class ChunkType(Enum):
         try:
             b = stream.read(4)
             return cls.decode(b)
-        except (EnumDecodeError, struct_error) as e:
+        except struct_error as e:
             raise ParsingError(index) from e
+        except EnumDecodeError as e:
+            return ChunkType(b)
 
     def write(self, stream: BinaryIO):
         b = self.encode()
