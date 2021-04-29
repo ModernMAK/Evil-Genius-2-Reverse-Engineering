@@ -19,11 +19,15 @@ class ResourceChunk(BaseChunk):
     @staticmethod
     def read(stream: BinaryIO, header:ChunkHeader):
         with AsuraIO(stream) as reader:
-            file_type_id_maybe = reader.read_int32()
-            file_id_maybe = reader.read_int32()
-            size = reader.read_int32()
-            name = reader.read_utf8(padded=True)
-            data = reader.read(size)
+            with reader.byte_counter() as read:
+                file_type_id_maybe = reader.read_int32()
+                file_id_maybe = reader.read_int32()
+                size = reader.read_int32()
+                name = reader.read_utf8(padded=True)
+                data = reader.read(size)
+                if header.chunk_size > read.length:
+                    garbage = reader.read(header.chunk_size - read.length)
+            assert read.length == header.chunk_size, (read.length, header.length)
         return ResourceChunk(header, file_type_id_maybe, file_id_maybe, name, data)
 
     def write(self, stream: BinaryIO) -> int:

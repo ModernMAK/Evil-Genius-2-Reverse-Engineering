@@ -86,13 +86,14 @@ class ZLibIO:
             chunk = self.decompressor.decompress(compressed_chunk)
             written += stream.write(chunk)
         if flush:
-            written += stream.write(self.decompressor.flush())
+            chunk = self.decompressor.flush()
+            written += stream.write(chunk)
             del self.decompressor
         return written
 
 
 class AsuraIO:
-    buffer_size: int = 64
+    buffer_size: int = 256
     byte_order = "little"
     word_size = 4
 
@@ -194,10 +195,10 @@ class AsuraIO:
 
         if strip_terminal:
             value = value.rstrip("\x00".encode())
-            try:
-                return value.decode("utf-8")
-            except UnicodeDecodeError as e:
-                raise IOError(f"Cannot read utf8: {repr(value)}") from e
+        try:
+            return value.decode("utf-8")
+        except UnicodeDecodeError as e:
+            raise IOError(f"Cannot read utf8: {repr(value)}") from e
 
     def write_utf8(self, value: str, *, padded=False, enforce_terminal=True, write_size=False) -> int:
         if enforce_terminal:

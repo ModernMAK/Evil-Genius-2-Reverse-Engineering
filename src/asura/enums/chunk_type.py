@@ -220,9 +220,6 @@ class ChunkType(Enum):
         except KeyError:
             if len(v) == 4:
                 return GenericChunkType(v)
-            elif len(v) == 0:
-                print("\tWarning ~ UNSAFE EOF!")
-                return ChunkType.EOF
             raise EnumDecodeError(cls, v, [e.value for e in cls])
 
     @classmethod

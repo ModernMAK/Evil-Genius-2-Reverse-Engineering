@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import BinaryIO
 
+from asura.error import ParsingError
 from asura.models.chunks import BaseChunk
 
 
@@ -20,7 +21,8 @@ class UnparsedChunk(BaseChunk):
             try:
                 assert current == expected, f"CHUNK READ MISMATCH CURRENTLY @{current}, EXPECTED @{expected}, {self.header.type}, D:{current-expected}"
             except AssertionError as e:
-                print(f"This chunk may be corrupted; or my format is improper:\t\t{e}")
+                raise ParsingError(current) from e
+                # print(f"This chunk may be corrupted; or my format is improper:\t\t{e}")
         else:
             raise ValueError("Result should have been assigned! Please check all code paths!")
         result.header = self.header

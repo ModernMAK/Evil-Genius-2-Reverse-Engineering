@@ -65,13 +65,14 @@ class ZbbArchive(BaseArchive):
             with t.bookmark():
                 decompressed_size_total = 0
                 for i, chunk in enumerate(self.chunks):
-                    print(f"\tDecompressing Chunk [{i + 1} / {len(self.chunks)}]")
+                    # print(f"\tDecompressing Chunk [{i + 1} / {len(self.chunks)}]",end="\r")
                     in_stream.seek(chunk._start)
                     with ZLibIO(in_stream) as decompressor:
                         decompressed_size = decompressor.decompress(out_stream, self.compressed_size)
                         assert decompressed_size == chunk.size
                         decompressed_size_total += decompressed_size
                 assert decompressed_size_total == self.size, (decompressed_size_total, self.size)
+        # print(f"\tDecompressed {len(self.chunks)} Chunks")
 
     def decompress(self, in_stream: BinaryIO) -> 'BaseArchive':
         from asura.parsers import ArchiveParser
