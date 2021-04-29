@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import List, BinaryIO
 
-from asura.mio import AsuraIO
-from asura.models.chunks import BaseChunk, ChunkHeader
+from asura.mio import AsuraIO, PackIO
+from asura.models.chunks import BaseChunk, ChunkHeader, ResourceChunk
 
 
 @dataclass
@@ -53,3 +53,17 @@ class ResourceListChunk(BaseChunk):
                 for desc in self.descriptions:
                     desc.write(stream)
         return written.length
+
+    def unpack(self, chunk_path: str, overwrite=False):
+        path = chunk_path + f".{self.header.type.value}"
+        meta = self.header
+        data = self.descriptions
+        return PackIO.write_meta_and_json(path, meta, data, overwrite, ext=PackIO.CHUNK_INFO_EXT)
+
+    @classmethod
+    def repack(cls, chunk_path: str) -> 'ResourceListChunk':
+        meta, data = PackIO.read_meta_and_json(chunk_path, ext=PackIO.CHUNK_INFO_EXT)
+        descriptions = [ResourceDescription(**desc) for desc in data]
+        header = ChunkHeader.repack_from_dict(meta)
+
+        return ResourceListChunk(header, descriptions=descriptions)

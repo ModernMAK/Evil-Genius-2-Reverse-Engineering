@@ -1,8 +1,14 @@
+import dataclasses
+import json
 import zlib
 from contextlib import contextmanager
-from typing import List, BinaryIO, Generator, Iterable
+from enum import Enum
+from os import stat, listdir, walk, makedirs, getcwd
+from os.path import join, splitext, dirname, exists, abspath
+from typing import List, BinaryIO, Generator, Iterable, Dict, Tuple
 
 from asura.config import MEBI_BYTE, INT64_SIZE, INT32_SIZE, INT16_SIZE, WORD_SIZE
+from asura.enums.chunk_type import GenericChunkType
 
 
 def bytes_to_word_boundary(index: int, word_size: int) -> int:
@@ -276,6 +282,138 @@ class AsuraIO:
         if write_size:
             self.write_int32(len(encoded) // 2)
         return self.stream.write(encoded)
+
+
+class EnhancedJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, GenericChunkType):
+            return o.value
+        elif dataclasses.is_dataclass(o):
+            return dataclasses.asdict(o)
+        elif isinstance(o, Enum):
+            return o.value
+        elif isinstance(o, bytes):
+            return o.hex()
+        return super().default(o)
+
+
+class PackIO:
+    ARCHIVE_INFO_EXT = ".archive_info"
+    CHUNK_INFO_EXT = ".chunk_info"
+
+    @staticmethod
+    def make_parent_dirs(path: str):
+        path = path.replace(r"\\\\?\\", "")
+        try:
+            makedirs(dirname(path))
+        except FileExistsError:
+            pass
+
+    # Walks across all files in the directory
+    # @staticmethod
+    # def walk_dir_for_files(path: str, include: List[str] = None, exclude: List[str] = None) -> Iterable[str]:
+    #     for root, dirs, files in walk(path):
+    #         for file in files:
+    #             _, ext = splitext(file)
+    #             ext_no_dot = ext[1:]
+    #             if include is not None and ext not in include and ext_no_dot not in include:
+    #                 continue
+    #             if exclude is not None and (ext in exclude or ext_no_dot in exclude):
+    #                 continue
+    #             yield join(root, file)
+
+    @classmethod
+    def walk_meta(cls, in_path: str, meta_ext: str = ".meta"):
+        for root, dirs, files in walk(in_path):
+            for dir in dirs:
+                path, ext = splitext(dir)
+                if meta_ext == ext:
+                    yield join(root, path)
+            for file in files:
+                path, ext = splitext(file)
+                if meta_ext == ext:
+                    yield join(root, path)
+
+    @classmethod
+    def walk_archives(cls, path: str) -> Iterable[str]:
+        return cls.walk_meta(path, cls.ARCHIVE_INFO_EXT)
+
+    @classmethod
+    def walk_chunks(cls, path: str) -> Iterable[str]:
+        return cls.walk_meta(path, cls.CHUNK_INFO_EXT)
+
+    @classmethod
+    def write_bytes(cls, path: str, data: bytes, overwrite: bool = False):
+        cls.make_parent_dirs(path)
+        # path = cls.safe_path(path)
+        diff = not exists(path) or stat(path).st_size != len(data)
+        if overwrite or diff:
+            with open(path, "wb") as data_file:
+                data_file.write(data)
+            return True
+        return False
+
+    @classmethod
+    def read_bytes(cls,path: str) -> bytes:
+        # path = cls.safe_path(path)
+        with open(path, "rb") as data_file:
+            return data_file.read()
+
+    @classmethod
+    def write_json(cls, path: str, meta, overwrite: bool = False) -> bool:
+        cls.make_parent_dirs(path)
+        # path = cls.safe_path(path)
+        lines = json.dumps(meta, indent=4, cls=EnhancedJSONEncoder)
+        diff = not exists(path) or stat(path).st_size != len(lines)
+        if overwrite or diff:
+            with open(path, "w") as meta_file:
+                meta_file.write(lines)
+            return True
+        return False
+
+    @classmethod
+    def read_json(cls, path: str) -> Dict:
+        # path = cls.safe_path(path)
+        with open(path, "r") as meta_file:
+            return json.load(meta_file)
+
+    @classmethod
+    def write_meta(cls, path: str, meta, overwrite: bool = False, ext: str = ".meta") -> bool:
+        return cls.write_json(path + ext, meta, overwrite)
+
+    @classmethod
+    def read_meta(cls, path: str, ext: str = ".meta") -> Dict:
+        return cls.read_json(path + ext)
+
+    @classmethod
+    def write_meta_and_bytes(cls, path: str, meta, data: bytes, overwrite: bool = False, ext: str = ".meta") -> bool:
+        written: bool = False
+        written |= cls.write_meta(path, meta, overwrite, ext)
+        written |= cls.write_bytes(path, data, overwrite)
+        return written
+
+    @classmethod
+    def read_meta_and_bytes(cls, path: str, ext: str = ".meta") -> Tuple[Dict, bytes]:
+        meta = cls.read_meta(path, ext)
+        data = cls.read_bytes(path)
+        return meta, data
+
+    @classmethod
+    def write_meta_and_json(cls, path: str, meta, data, overwrite: bool = False, ext: str = ".meta"):
+        written: bool = False
+        written |= cls.write_meta(path, meta, overwrite, ext)
+        written |= cls.write_json(path, data, overwrite)
+        return written
+
+    @classmethod
+    def read_meta_and_json(cls, path: str, ext: str = ".meta") -> Tuple[Dict, Dict]:
+        meta = cls.read_meta(path, ext)
+        data = cls.read_json(path)
+        return meta, data
+
+    @staticmethod
+    def safe_path(path: str) -> str:
+        return r"\\\\?\\" + abspath(path)
 
 
 def split_asura_richtext(raw_text: str) -> List[str]:

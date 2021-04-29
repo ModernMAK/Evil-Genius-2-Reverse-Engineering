@@ -1,12 +1,13 @@
+import os
 from dataclasses import dataclass
+from os.path import join, basename
 from typing import List, BinaryIO
-
 
 # THESE FILES APPEAR TO BE MS-ADPCM
 # WAVE FORMAT CODES AREN'T PROPRIETARY, THEIR STANDARDIZED
 # BUT ITS STILL IMPOSSIBLE TO GOOGLE THEM
 # https://www.codeproject.com/Questions/143294/WAV-file-compression-format-codes
-from asura.mio import AsuraIO
+from asura.mio import AsuraIO, PackIO
 from asura.models.chunks import ChunkHeader, BaseChunk
 
 
@@ -16,7 +17,7 @@ class SoundClip:
     reserved_b: bytes = None
     data: bytes = None
     _size_from_meta: int = None
-    _is_sparse_from_meta:bool = None
+    _is_sparse_from_meta: bool = None
 
     @property
     def is_sparse(self) -> bool:
@@ -52,6 +53,25 @@ class SoundClip:
         if not self.is_sparse:
             return stream.write(self.data)
 
+    def unpack(self, chunk_path: str, overwrite=False) -> bool:
+        full_path = join(chunk_path, basename(self.name.lstrip("\\/")))
+        meta = {
+            "name": self.name,
+            "reserved_b": self.reserved_b
+        }
+        data = self.data
+        # data = self.descriptions
+        unpacked = False
+        unpacked |= PackIO.write_meta(full_path, meta, overwrite)
+        unpacked |= PackIO.write_bytes(full_path, data, overwrite)
+        return unpacked
+
+    @classmethod
+    def repack(cls, chunk_path: str, clip_path: str) -> 'SoundClip':
+        meta = PackIO.read_meta(clip_path)
+        data = PackIO.read_bytes(clip_path)
+
+        return SoundClip(data=data, **meta)
 
 
 @dataclass
@@ -86,3 +106,28 @@ class SoundChunk(BaseChunk):
                     for clip in self.clips:
                         clip.write_data(stream)
         return written.length
+
+    def unpack(self, chunk_path: str, overwrite=False) -> bool:
+        path = chunk_path + f".{self.header.type.value}"
+        meta = {
+            'header': self.header,
+            'is_sparse': self.is_sparse
+        }
+        # data = self.descriptions
+        unpacked = False
+        unpacked |= PackIO.write_meta(path, meta, overwrite, ext=PackIO.CHUNK_INFO_EXT)
+        for clip in self.clips:
+            unpacked |= clip.unpack(chunk_path, overwrite)
+        return unpacked
+
+    @classmethod
+    def repack(cls, chunk_path: str) -> 'SoundChunk':
+        meta = PackIO.read_meta(chunk_path, ext=PackIO.CHUNK_INFO_EXT)
+
+        clips = []
+        for clip_path in PackIO.walk_meta(chunk_path):
+            clip = SoundClip.repack(chunk_path, clip_path)
+            clips.append(clip)
+        header = ChunkHeader.repack_from_dict(meta['header'])
+        del meta['header']
+        return SoundChunk(header, clips=clips, **meta)

@@ -1,6 +1,7 @@
 # Ignore all files in dump; these are files extracted from ASURA Resource files files
 dump/
 unpack/
+repack/
 # Ignore virtual environment
 venv/
 __pycache__/

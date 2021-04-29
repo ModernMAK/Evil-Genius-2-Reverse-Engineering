@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from typing import List, BinaryIO
+from typing import List, BinaryIO, Dict
 
 from asura.enums import LangCode
-from asura.mio import AsuraIO, split_asura_richtext
+from asura.mio import AsuraIO, split_asura_richtext, PackIO
 from asura.models.chunks import ChunkHeader, BaseChunk, RawChunk
 
 
@@ -60,7 +60,7 @@ class HTextChunk(BaseChunk):
         if header is not None:
             if header.version != cls.CURRENT_VERSION:
                 print("!! HTEXT READ AS RAW !!")
-                return RawChunk.read(stream,header)
+                return RawChunk.read(stream, header)
 
         with AsuraIO(stream) as reader:
             size = reader.read_int32()
@@ -89,3 +89,24 @@ class HTextChunk(BaseChunk):
                 writer.write_utf8(self.key, padded=True)
                 writer.write_utf8_list(keys)
         return written.length
+
+    def unpack(self, chunk_path: str, overwrite=False) -> bool:
+        path = chunk_path + f".{self.header.type.value}"
+        meta = {
+            'header': self.header,
+            'key': self.key,
+            'word_a': self.word_a,
+            'language': self.language,
+            'data_byte_length': self.data_byte_length,
+        }
+        data = self.parts
+        return PackIO.write_meta_and_json(path, meta, data, overwrite, ext=PackIO.CHUNK_INFO_EXT)
+
+    @classmethod
+    def repack(cls, chunk_path: str) -> 'HTextChunk':
+        meta, data = PackIO.read_meta_and_json(chunk_path, ext=PackIO.CHUNK_INFO_EXT)
+        parts = [HText(**d) for d in data]
+
+        header = ChunkHeader.repack_from_dict(meta['header'])
+        del meta['header']
+        return HTextChunk(header, parts=parts, **meta)

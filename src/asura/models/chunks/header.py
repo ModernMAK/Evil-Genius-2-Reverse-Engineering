@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from struct import Struct
-from typing import BinaryIO
+from typing import BinaryIO, Dict
 
 from asura.enums import ChunkType
 from asura.error import ParsingError
@@ -41,6 +41,14 @@ class ChunkHeader:
                     writer.write_int32(self.version)
                     writer.write_word(self.reserved)
         return written.length
+
+    @staticmethod
+    def repack_from_dict(d:Dict)-> 'ChunkHeader':
+        type = ChunkType.decode_from_str(d['type'])
+        reserved = bytes.fromhex(d['reserved'])
+        del d['type']
+        del d['reserved']
+        return ChunkHeader(type,reserved=reserved,**d)
 
     @staticmethod
     def overwrite_length(stream: BinaryIO, size: int):

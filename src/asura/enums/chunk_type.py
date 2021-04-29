@@ -9,10 +9,14 @@ from asura.error import ParsingError, EnumDecodeError
 
 _TYPE_LAYOUT = Struct("4s")
 
-@dataclass
+
 class GenericChunkType:
-    value:str
-    name:str = "GENERIC"
+    def __init__(self, value: str = None):
+        self.value: str = value
+
+    @property
+    def name(self):
+        return "GENERIC"
 
     @classmethod
     def _type_layout(cls) -> Struct:
@@ -25,6 +29,7 @@ class GenericChunkType:
     def decode(cls, b: bytes) -> 'GenericChunkType':
         v = b.decode()
         return GenericChunkType(v)
+
     @classmethod
     def read(cls, stream: BinaryIO) -> 'GenericChunkType':
         b = stream.read(4)
@@ -208,19 +213,22 @@ class ChunkType(Enum):
     # EG2 exclusive formats
     EG_Base = "bsnf"
 
-
     def encode(self) -> bytes:
         return self.value.encode()
 
     @classmethod
+    def decode_from_str(cls, s: str) -> 'ChunkType':
+        try:
+            return enum_value_to_enum(s, ChunkType)
+        except KeyError:
+            if len(s) == 4:
+                return GenericChunkType(s)
+            raise EnumDecodeError(cls, s, [e.value for e in cls])
+
+    @classmethod
     def decode(cls, b: bytes) -> 'ChunkType':
         v = b.decode()
-        try:
-            return enum_value_to_enum(v, ChunkType)
-        except KeyError:
-            if len(v) == 4:
-                return GenericChunkType(v)
-            raise EnumDecodeError(cls, v, [e.value for e in cls])
+        return cls.decode_from_str(v)
 
     @classmethod
     def read(cls, stream: BinaryIO) -> 'ChunkType':

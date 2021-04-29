@@ -28,3 +28,4 @@ class UnparsedChunk(BaseChunk):
         result.header = self.header
         stream.seek(prev_pos)
         return result
+
