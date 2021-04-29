@@ -124,7 +124,7 @@ def slugify(p: str) -> str:
 
 
 # name may not be used for all unpacked assets
-def unpack_chunk(chunk: BaseChunk, a archive_name: str, out_dir: str = None, *, index: int = 0, overwrite: bool = True) -> bool:
+def unpack_chunk(chunk: BaseChunk, archive_name: str, out_dir: str = None, *, index: int = 0, overwrite: bool = True) -> bool:
     name_only, ext = splitext(archive_name)
 
     # Ignore unparsed; they cannot be unpacked
