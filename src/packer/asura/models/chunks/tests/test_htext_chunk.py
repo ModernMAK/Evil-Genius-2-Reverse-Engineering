@@ -1,8 +1,8 @@
 from io import BytesIO
 from typing import BinaryIO, Union
 
-from asura.enums import LangCode
-from asura.models.chunks import HText, HTextChunk
+from packer.asura.enums import LangCode
+from packer.asura.models.chunks import HText, HTextChunk
 
 LITTLE = "little"
 

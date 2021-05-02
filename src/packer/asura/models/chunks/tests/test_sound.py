@@ -1,7 +1,7 @@
 from io import BytesIO
 from typing import BinaryIO, Union
 
-from asura.models.chunks import SoundChunk, SoundClip
+from packer.asura.models.chunks import SoundChunk, SoundClip
 
 LITTLE = "little"
 

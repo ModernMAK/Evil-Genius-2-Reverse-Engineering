@@ -1,8 +1,8 @@
 from io import BytesIO
 from typing import Iterable
 
-from asura.config import WORD_SIZE
-from asura.mio import AsuraIO, bytes_to_word_boundary
+from packer.asura.config import WORD_SIZE
+from packer.asura.mio import AsuraIO, bytes_to_word_boundary
 
 tf = [True, False]
 

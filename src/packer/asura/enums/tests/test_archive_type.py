@@ -1,5 +1,5 @@
-from asura.enums import ArchiveType
-from asura.error import EnumDecodeError
+from packer.asura.enums import ArchiveType
+from packer.asura.error import EnumDecodeError
 
 legal_values = [
     (ArchiveType.Folder, b"Asura   "),

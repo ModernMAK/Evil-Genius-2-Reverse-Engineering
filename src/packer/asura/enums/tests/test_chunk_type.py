@@ -1,5 +1,5 @@
-from asura.enums import ChunkType
-from asura.error import EnumDecodeError
+from packer.asura.enums import ChunkType
+from packer.asura.error import EnumDecodeError
 
 legal_values = [
     (ChunkType.SOUND, b"ASTS"),
