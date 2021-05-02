@@ -1,0 +1,23 @@
+name: Pytest
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.X
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.x'
+    - name: Test with pytest
+      run: |
+        pip install -r requirements.txt
+        python -m pytest -v
+        | tee pytest.txt
+    - name: Upload pytest.txt as artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: pytest report
+        path: pytest.txt
