@@ -21,7 +21,8 @@ jobs:
         pip install pytest
     - name: Test with pytest
       run: |
-        pytest -v --resultlog=pytest.txt
+        pytest -v
+        | tee pytest.txt
     - name: Upload pytest.txt as artifact
       uses: actions/upload-artifact@v2
       with:
