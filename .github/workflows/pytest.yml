@@ -13,7 +13,7 @@ jobs:
         python-version: '3.x'
     - name: Test with pytest
       run: |
-        pip install -r test_requirements.txt
+        pip install -r requirements.txt
         python -m pytest -v
         | tee pytest.txt
     - name: Upload pytest.txt as artifact
