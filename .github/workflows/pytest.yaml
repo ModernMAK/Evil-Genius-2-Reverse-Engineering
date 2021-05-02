@@ -11,9 +11,13 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: '3.x'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pylint
     - name: Test with pytest
       run: |
-        pip install -r requirements.txt
         python -m pytest -v
         | tee pytest.txt
     - name: Upload pytest.txt as artifact
