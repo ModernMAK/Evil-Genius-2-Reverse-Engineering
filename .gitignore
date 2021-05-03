@@ -2,6 +2,10 @@
 dump/
 unpack/
 repack/
+
+## Custom content
+cc/
+
 # Ignore virtual environment
 venv/
 __pycache__/
