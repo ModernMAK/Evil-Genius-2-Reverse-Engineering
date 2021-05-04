@@ -37,13 +37,43 @@ class UnpackOptions:
     overwrite_chunks: bool = False
     strict_archive: bool = False
 
-def write_meta(archive_path:str):
+    def get_print_str_parts(self) -> List[str]:
+        def list_opts(n, l:List):
+            if l is None:
+                return None
+            else:
+                return f"{n}: {', '.join([str(p) for p in l])}"
+
+        def bool_opts(n:str, b:bool):
+            if b is not None:
+                return f"{n}: {'enabled' if b else 'disabled'}"
+            else:
+                return None
+
+
+        parts = [
+            list_opts("included_chunks", self.included_chunks),
+            list_opts("excluded_chunks", self.excluded_chunks),
+
+            list_opts("included_archives", self.included_archives),
+            list_opts("excluded_archives", self.excluded_archives),
+
+            bool_opts("cache_decompressed", self.cache_decompressed),
+            bool_opts("use_cached_decompressed", self.use_cached_decompressed),
+            bool_opts("unpack_decompressed", self.unpack_decompressed),
+            bool_opts("overwrite_chunks", self.overwrite_chunks),
+            bool_opts("strict_archive", self.strict_archive)
+        ]
+        return [s for s in parts if s is not None]
+
+def write_meta(archive_path: str):
     PackIO.make_parent_dirs(archive_path)
     with open(archive_path + PackIO.ARCHIVE_INFO_EXT, "w"):
         pass
 
 
-def unpack_archive(archive: BaseArchive, archive_path: str, cache_path: str = None, stream: BinaryIO = None, options: UnpackOptions = None) -> Tuple[bool, int, int]:
+def unpack_archive(archive: BaseArchive, archive_path: str, cache_path: str = None, stream: BinaryIO = None,
+                   options: UnpackOptions = None) -> Tuple[bool, int, int]:
     options = options or UnpackOptions()
     if archive is None:
         return False, -1, -1
@@ -119,12 +149,19 @@ def unpack_stream(stream: BinaryIO, archive_ath: str, cache_path: str = None,
 
 def unpack_file(path: str, name: str, out_dir: str = None, cache_dir: str = None, options: UnpackOptions = None) -> \
         Tuple[bool, bool, int, int]:
+    out_dir = out_dir or DEFAULT_ROOT_DIR
     archive_path = join(out_dir, name)
+    if cache_dir:
+        cache_path = join(cache_dir, name)
+    else:
+        cache_path = None
     with open(path, "rb") as stream:
-        return unpack_stream(stream, archive_path, cache_dir, options)
+        return unpack_stream(stream, archive_path, cache_path, options)
 
 
-def unpack_directory(search_dir: str, out_dir: str = None, cache_dir: str = None, unpack_name: str = None, options: UnpackOptions = None) -> Tuple[int, int, int, int]:  # Archive_Unpacked, Archive Total, Chunks Unpacked, Chunks Total
+def unpack_directory(search_dir: str, out_dir: str = None, cache_dir: str = None, unpack_name: str = None,
+                     options: UnpackOptions = None) -> Tuple[
+    int, int, int, int]:  # Archive_Unpacked, Archive Total, Chunks Unpacked, Chunks Total
     out_dir = out_dir or DEFAULT_ROOT_DIR
     if unpack_name is not None:
         out_dir = join(out_dir or DEFAULT_ROOT_DIR, unpack_name)
@@ -140,7 +177,7 @@ def unpack_directory(search_dir: str, out_dir: str = None, cache_dir: str = None
             file_path = join(root, file)
             name = file_path.replace(search_dir, "").lstrip("\\/")
             print(f"\t...\\{name}")
-            is_archive, success, unpacked, total = unpack_file(file_path, name, out_dir,options= options)
+            is_archive, success, unpacked, total = unpack_file(file_path, name, out_dir, cache_dir, options=options)
             if is_archive:
                 total_archives += 1
                 if success:
@@ -167,18 +204,45 @@ if __name__ == "__main__":
         join(launcher_root, eg_root),
         join(steam_root, eg_root)
     ]
+    eg_files = [
+        (r"Misc\packages\required",
+         [
+             "dlc_preorder.asr",
+             "dlc_preorder_content.asr",
+             "dlc_preorder_content.asr.pc.streamsounds",
+             "dlc_preorder_content.ts"
+         ]
+         )
+    ]
     opts = UnpackOptions(overwrite_chunks=False)
-    for root in eg_roots:
-        if exists(root):
-            unpack_directory(root, unpack_name=basename(root), options=opts)
-            break
-        else:
-            print(f"Cant dump '{root}', doesn't exist.")
+    DO_EG_FILES = False
+    DO_EG_DIRS = True
+    print("Options:")
+    for part in opts.get_print_str_parts():
+        print("\t", part)
+
+    if DO_EG_FILES:
+        for root in eg_roots:
+            if exists(root):
+                for part_root, parts in eg_files:
+                    for part in parts:
+                        full_path = join(root, part_root, part)
+                        print(full_path)
+                        unpack_file(full_path, name=full_path.replace(root, basename(root)),  options=opts)
+            else:
+                print(f"Cant dump '{root}', doesn't exist.")
+    if DO_EG_DIRS:
+        for root in eg_roots:
+            if exists(root):
+                unpack_directory(root, unpack_name=basename(root), options=opts)
+                break
+            else:
+                print(f"Cant dump '{root}', doesn't exist.")
     se_roots = [
         # se1_root, se2_root, se3_root, se4_root
     ]
-    for root in se_roots:
-        if exists(root):
-            unpack_directory(root, unpack_name=basename(root))
-        else:
-            print(f"Cant dump '{root}', doesn't exist.")
+    # for root in se_roots:
+    #     if exists(root):
+    #         unpack_directory(root, unpack_name=basename(root))
+    #     else:
+    #         print(f"Cant dump '{root}', doesn't exist.")
