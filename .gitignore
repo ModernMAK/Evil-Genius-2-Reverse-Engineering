@@ -3,6 +3,7 @@ dump/
 unpack/
 repack/
 
+
 ## Custom content
 cc/
 
@@ -15,3 +16,5 @@ __pycache__/
 depends/
 #Ignore pytest
 .pytest_cache/
+
+secrets/

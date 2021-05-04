@@ -18,7 +18,8 @@ class ChunkHeader:
 
     @property
     def chunk_size(self) -> int:
-        return self.length - self.__meta_layout.size - self.type._type_layout().size
+        # Chunk type, length, version, reserved are each 4 bytes, so offset by 16
+        return self.length - 16
 
     @classmethod
     def read(cls, stream: BinaryIO) -> 'ChunkHeader':

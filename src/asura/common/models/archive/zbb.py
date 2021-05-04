@@ -49,7 +49,7 @@ class ZbbArchive(BaseArchive):
     chunks: List[ZbbChunk] = None
 
     @classmethod
-    def read(cls, stream: BinaryIO, type: ArchiveType = None, sparse:bool=True) -> 'ZbbArchive':
+    def read(cls, stream: BinaryIO, type: ArchiveType = None, sparse: bool = True) -> 'ZbbArchive':
         with AsuraIO(stream) as reader:
             _compressed_size = reader.read_int32()
             _size = reader.read_int32()
@@ -61,18 +61,22 @@ class ZbbArchive(BaseArchive):
             return ZbbArchive(type, _size, _compressed_size, chunks)
 
     def decompress_to_stream(self, in_stream: BinaryIO, out_stream: BinaryIO):
+        DECOMP_SYMBOLS = "|/-\\"
+        STEP = 1
         with AsuraIO(in_stream) as t:
             with t.bookmark():
                 decompressed_size_total = 0
+                print(f"\r\t\tDecompressing {len(self.chunks)} Chunks", end="")
                 for i, chunk in enumerate(self.chunks):
-                    # print(f"\tDecompressing Chunk [{i + 1} / {len(self.chunks)}]",end="\r")
+                    if i % STEP == 0:
+                        print(f"\r\t\tDecompressing Chunks ({DECOMP_SYMBOLS[(i // STEP) % len(DECOMP_SYMBOLS)]})", end="")
                     in_stream.seek(chunk._start)
                     with ZLibIO(in_stream) as decompressor:
                         decompressed_size = decompressor.decompress(out_stream, self.compressed_size)
                         assert decompressed_size == chunk.size
                         decompressed_size_total += decompressed_size
                 assert decompressed_size_total == self.size, (decompressed_size_total, self.size)
-        # print(f"\tDecompressed {len(self.chunks)} Chunks")
+        print(f"\r\t\tDecompressed {len(self.chunks)} Chunks")
 
     def decompress(self, in_stream: BinaryIO) -> 'BaseArchive':
         from asura.common.parsers import ArchiveParser
@@ -80,7 +84,6 @@ class ZbbArchive(BaseArchive):
             self.decompress_to_stream(in_stream, temp_stream)
             temp_stream.seek(0)
             return ArchiveParser.parse(temp_stream, sparse=False)
-
 
     @staticmethod
     def compress_to_stream(in_stream: BinaryIO, out_stream: BinaryIO) -> int:

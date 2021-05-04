@@ -61,7 +61,8 @@ class SoundClip:
         # data = self.descriptions
         unpacked = False
         unpacked |= PackIO.write_meta(full_path, meta, overwrite)
-        unpacked |= PackIO.write_bytes(full_path, data, overwrite)
+        if not self.is_sparse:
+            unpacked |= PackIO.write_bytes(full_path, data, overwrite)
         return unpacked
 
     @classmethod
@@ -114,6 +115,7 @@ class SoundChunk(BaseChunk):
         # data = self.descriptions
         unpacked = False
         unpacked |= PackIO.write_meta(path, meta, overwrite, ext=PackIO.CHUNK_INFO_EXT)
+
         for clip in self.clips:
             unpacked |= clip.unpack(chunk_path, overwrite)
         return unpacked

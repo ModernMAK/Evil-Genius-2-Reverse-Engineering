@@ -59,7 +59,7 @@ class HTextChunk(BaseChunk):
     @classmethod
     def read(cls, stream: BinaryIO, header: ChunkHeader = None) -> 'HTextChunk':
         if header is not None:
-            if header.version != cls.CURRENT_VERSION:
+            if header.version != CURRENT_HTEXT_VERSION:
                 print("!! HTEXT READ AS RAW !!")
                 return RawChunk.read(stream, header)
 
