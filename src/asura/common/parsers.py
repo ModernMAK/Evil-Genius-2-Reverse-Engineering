@@ -23,7 +23,8 @@ RepackChunk = Callable[[str], BaseChunk]
 
 
 class ChunkParser:
-    from asura.common.models.chunks import HTextChunk, SoundChunk, RawChunk, ResourceChunk, ResourceListChunk, EofChunk
+    from asura.common.models.chunks.formats import HTextChunk, SoundChunk, ResourceChunk, ResourceListChunk
+    from asura.common.models.chunks import  RawChunk, EofChunk
     _map: Dict[ChunkType, ParseChunk] = {
         ChunkType.H_TEXT: HTextChunk.read,
         ChunkType.SOUND: SoundChunk.read,
@@ -40,7 +41,8 @@ class ChunkParser:
 
 
 class ChunkPacker:
-    from asura.common.models.chunks import HTextChunk, SoundChunk, RawChunk, ResourceChunk, ResourceListChunk, EofChunk
+    from asura.common.models.chunks.formats import HTextChunk, SoundChunk, ResourceChunk, ResourceListChunk
+    from asura.common.models.chunks import  RawChunk, EofChunk
     _unpack_map: Dict[ChunkType, UnpackChunk] = {
         ChunkType.H_TEXT: HTextChunk.unpack,
         ChunkType.SOUND: SoundChunk.unpack,

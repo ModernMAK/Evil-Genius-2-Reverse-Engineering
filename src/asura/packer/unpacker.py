@@ -18,12 +18,31 @@ DECOMPRESSED_DIR = "decompressed"
 DUMP_DIR = "archives"
 
 
-def unpack_chunk(chunk: BaseChunk, chunk_path: str, overwrite: bool = True) -> bool:
-    return ChunkPacker.unpack(chunk, chunk_path, overwrite)
-
-
 @dataclass
 class UnpackOptions:
+    output_directory: str = None
+    # Appended to output directory,
+    output_name: str = None
+
+    def get_output_directory(self) -> str:
+        return self.output_directory or DEFAULT_ROOT_DIR
+
+    def get_named_output_directory(self) -> str:
+        return self.get_output_directory() if self.output_name is None else join(self.get_output_directory(),
+                                                                                 self.output_name)
+
+    def create_decompressed_cache_path(self, name: str = None) -> str:
+        if name is None:
+            return join(self.get_named_output_directory(), DECOMPRESSED_DIR)
+        else:
+            return join(self.get_named_output_directory(), DECOMPRESSED_DIR, name)
+
+    def create_path(self, name: str = None) -> str:
+        if name is None:
+            return join(self.get_named_output_directory(), DUMP_DIR)
+        else:
+            return join(self.get_named_output_directory(), DUMP_DIR, name)
+
     included_chunks: List[ChunkType] = None
     excluded_chunks: List[ChunkType] = None
 
@@ -38,18 +57,17 @@ class UnpackOptions:
     strict_archive: bool = False
 
     def get_print_str_parts(self) -> List[str]:
-        def list_opts(n, l:List):
+        def list_opts(n, l: List):
             if l is None:
                 return None
             else:
                 return f"{n}: {', '.join([str(p) for p in l])}"
 
-        def bool_opts(n:str, b:bool):
+        def bool_opts(n: str, b: bool):
             if b is not None:
                 return f"{n}: {'enabled' if b else 'disabled'}"
             else:
                 return None
-
 
         parts = [
             list_opts("included_chunks", self.included_chunks),
@@ -66,13 +84,23 @@ class UnpackOptions:
         ]
         return [s for s in parts if s is not None]
 
-def write_meta(archive_path: str):
+
+def unpack_chunk(chunk: BaseChunk, chunk_name: str, options: UnpackOptions = None) -> bool:
+    options = options or UnpackOptions()
+    chunk_path = options.create_path(chunk_name)
+    print(f"\t\t\t{chunk_path}")
+    return ChunkPacker.unpack(chunk, chunk_path, options.overwrite_chunks)
+
+
+def write_meta(name: str, options: UnpackOptions = None):
+    options = options or UnpackOptions()
+    archive_path = options.create_path(name)
     PackIO.make_parent_dirs(archive_path)
     with open(archive_path + PackIO.ARCHIVE_INFO_EXT, "w"):
         pass
 
 
-def unpack_archive(archive: BaseArchive, archive_path: str, cache_path: str = None, stream: BinaryIO = None,
+def unpack_archive(archive: BaseArchive, archive_name: str, stream: BinaryIO = None,
                    options: UnpackOptions = None) -> Tuple[bool, int, int]:
     options = options or UnpackOptions()
     if archive is None:
@@ -92,36 +120,34 @@ def unpack_archive(archive: BaseArchive, archive_path: str, cache_path: str = No
         written = 0
         total = 0
         try:
-            write_meta(archive_path)
+            write_meta(archive_name)
             for i, chunk in enumerate(archive.load_chunk_by_chunk(stream, options.included_chunks)):
-                chunk_path = join(archive_path, f"Chunk {i}")
-                if unpack_chunk(chunk, chunk_path, overwrite=options.overwrite_chunks):
+                chunk_path = join(archive_name, f"Chunk {i}")
+                if unpack_chunk(chunk, chunk_path, options):
                     written += 1
                 total += 1
             return True, written, total
         except ParsingError as e:
-            print(archive_path, e)
+            print(archive_name, e)
             return False, written, total
     elif isinstance(archive, ZbbArchive):
-        if cache_path is not None and exists(cache_path) and stat(
-                cache_path).st_size == archive.size and options.use_cached_decompressed:
+        cache_path = options.create_decompressed_cache_path(archive_name)
+        if exists(cache_path) and stat(cache_path).st_size == archive.size and options.use_cached_decompressed:
             if options.unpack_decompressed:
                 with open(cache_path, "rb") as cached:
-                    is_archive, success, unpacked, total = unpack_stream(cached, archive_path, cache_path,
-                                                                         options=options)
+                    is_archive, success, unpacked, total = unpack_stream(cached, archive_name, options)
                     if is_archive:
                         return success, unpacked, total
                     else:
                         return False, -1, -1
             else:
                 return False, -1, -1
-        elif options.cache_decompressed and cache_path is not None:
+        elif options.cache_decompressed:
             with open(cache_path, "w+b") as cached:
                 archive.decompress_to_stream(stream, cached)
                 if options.unpack_decompressed:
                     cached.seek(0)
-                    is_archive, success, unpacked, total = unpack_stream(cached, archive_path, cache_path,
-                                                                         options=options)
+                    is_archive, success, unpacked, total = unpack_stream(cached, archive_name, options)
                     if is_archive:
                         return success, unpacked, total
                     else:
@@ -129,13 +155,12 @@ def unpack_archive(archive: BaseArchive, archive_path: str, cache_path: str = No
         else:
             if options.unpack_decompressed:
                 decompressed_archive = archive.decompress(stream)
-                return unpack_archive(decompressed_archive, archive_path, cache_path, stream, options)
+                return unpack_archive(decompressed_archive, archive_name, stream, options)
 
     return False, -1, -1
 
 
-def unpack_stream(stream: BinaryIO, archive_ath: str, cache_path: str = None,
-                  options: UnpackOptions = None) -> Tuple[bool, bool, int, int]:
+def unpack_stream(stream: BinaryIO, stream_name: str, options: UnpackOptions = None) -> Tuple[bool, bool, int, int]:
     try:
         archive = ArchiveParser.parse(stream)
     except ParsingError:
@@ -143,30 +168,18 @@ def unpack_stream(stream: BinaryIO, archive_ath: str, cache_path: str = None,
             return False, False, -1, -1
         else:
             raise
-    success, unpacked, total = unpack_archive(archive, archive_ath, cache_path, stream, options)
+    success, unpacked, total = unpack_archive(archive, stream_name, stream, options)
     return True, success, unpacked, total
 
 
-def unpack_file(path: str, name: str, out_dir: str = None, cache_dir: str = None, options: UnpackOptions = None) -> \
+def unpack_file(path: str, file_name: str, options: UnpackOptions = None) -> \
         Tuple[bool, bool, int, int]:
-    out_dir = out_dir or DEFAULT_ROOT_DIR
-    archive_path = join(out_dir, name)
-    if cache_dir:
-        cache_path = join(cache_dir, name)
-    else:
-        cache_path = None
     with open(path, "rb") as stream:
-        return unpack_stream(stream, archive_path, cache_path, options)
+        return unpack_stream(stream, file_name, options)
 
 
-def unpack_directory(search_dir: str, out_dir: str = None, cache_dir: str = None, unpack_name: str = None,
-                     options: UnpackOptions = None) -> Tuple[
+def unpack_directory(search_dir: str, options: UnpackOptions = None) -> Tuple[
     int, int, int, int]:  # Archive_Unpacked, Archive Total, Chunks Unpacked, Chunks Total
-    out_dir = out_dir or DEFAULT_ROOT_DIR
-    if unpack_name is not None:
-        out_dir = join(out_dir or DEFAULT_ROOT_DIR, unpack_name)
-    if cache_dir is None:
-        cache_dir = join(out_dir, DECOMPRESSED_DIR)
     print(f"Unpacking '{search_dir}'")
     unpacked_archives = 0
     total_archives = 0
@@ -177,7 +190,7 @@ def unpack_directory(search_dir: str, out_dir: str = None, cache_dir: str = None
             file_path = join(root, file)
             name = file_path.replace(search_dir, "").lstrip("\\/")
             print(f"\t...\\{name}")
-            is_archive, success, unpacked, total = unpack_file(file_path, name, out_dir, cache_dir, options=options)
+            is_archive, success, unpacked, total = unpack_file(file_path, name, options=options)
             if is_archive:
                 total_archives += 1
                 if success:
@@ -205,20 +218,21 @@ if __name__ == "__main__":
         join(steam_root, eg_root)
     ]
     eg_files = [
-        (r"Misc\packages\required",
-         [
-             "dlc_preorder.asr",
-             "dlc_preorder_content.asr",
-             "dlc_preorder_content.asr.pc.streamsounds",
-             "dlc_preorder_content.ts"
-         ]
-         )
+        (
+            r"Misc\packages\required",
+            [
+             "furniture.asr",
+             "furniture_content.asr",
+             "furniture_content.asr.pc.sounds",
+             "furniture_content.ts"
+            ]
+        )
     ]
-    opts = UnpackOptions(overwrite_chunks=False)
-    DO_EG_FILES = False
-    DO_EG_DIRS = True
+    my_options = UnpackOptions(overwrite_chunks=False, output_name=basename(eg_root))
+    DO_EG_FILES = True
+    DO_EG_DIRS = False
     print("Options:")
-    for part in opts.get_print_str_parts():
+    for part in my_options.get_print_str_parts():
         print("\t", part)
 
     if DO_EG_FILES:
@@ -228,13 +242,13 @@ if __name__ == "__main__":
                     for part in parts:
                         full_path = join(root, part_root, part)
                         print(full_path)
-                        unpack_file(full_path, name=full_path.replace(root, basename(root)),  options=opts)
+                        unpack_file(full_path, file_name=full_path.replace(root,"").lstrip("\\/"), options=my_options)
             else:
                 print(f"Cant dump '{root}', doesn't exist.")
     if DO_EG_DIRS:
         for root in eg_roots:
             if exists(root):
-                unpack_directory(root, unpack_name=basename(root), options=opts)
+                unpack_directory(root, options=my_options)
                 break
             else:
                 print(f"Cant dump '{root}', doesn't exist.")

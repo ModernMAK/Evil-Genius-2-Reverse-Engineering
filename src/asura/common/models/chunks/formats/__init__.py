@@ -9,8 +9,8 @@ __all__=[
     "SoundClip",
 ]
 
-from packer.asura.models.chunks.formats.fnfo import FontInfoChunk
-from packer.asura.models.chunks.formats.htxt import HText, HTextChunk
-from packer.asura.models.chunks.formats.rscf import ResourceChunk
-from packer.asura.models.chunks.formats.rsfl import ResourceListChunk, ResourceDescription
-from packer.asura.models.chunks.formats.asts import SoundChunk, SoundClip
+from asura.common.models.chunks.formats.fnfo import FontInfoChunk
+from asura.common.models.chunks.formats.htxt import HText, HTextChunk
+from asura.common.models.chunks.formats.rscf import ResourceChunk
+from asura.common.models.chunks.formats.rsfl import ResourceListChunk, ResourceDescription
+from asura.common.models.chunks.formats.asts import SoundChunk, SoundClip

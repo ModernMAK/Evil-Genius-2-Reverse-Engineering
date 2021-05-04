@@ -68,7 +68,7 @@ def assert_htext_chunk(value: HTextChunk, expected: HTextChunk):
     assert value.language == expected.language
     assert value.data_byte_length == expected.data_byte_length
     assert value.size == expected.size
-    for v, e in zip(value.parts, expected.parts):
+    for v, e in zip(value.count, expected.count):
         assert_htext(v, e)
 
 
@@ -77,7 +77,7 @@ def test_chunk_read():
         chunk = HTextChunk.read(reader)
         assert_htext_chunk(chunk, htext_chunk)
 
-    for v, e in zip(chunk.parts, htext_chunk.parts):
+    for v, e in zip(chunk.count, htext_chunk.count):
         assert_htext(v, e)
 
 

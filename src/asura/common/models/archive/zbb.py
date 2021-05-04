@@ -69,7 +69,7 @@ class ZbbArchive(BaseArchive):
                 print(f"\r\t\tDecompressing {len(self.chunks)} Chunks", end="")
                 for i, chunk in enumerate(self.chunks):
                     if i % STEP == 0:
-                        print(f"\r\t\tDecompressing Chunks ({DECOMP_SYMBOLS[(i // STEP) % len(DECOMP_SYMBOLS)]})", end="")
+                        print(f"\r\t\t({DECOMP_SYMBOLS[(i // STEP) % len(DECOMP_SYMBOLS)]}) Decompressing Chunks [{i+1}/{len(self.chunks)}]", end="")
                     in_stream.seek(chunk._start)
                     with ZLibIO(in_stream) as decompressor:
                         decompressed_size = decompressor.decompress(out_stream, self.compressed_size)

@@ -8,8 +8,6 @@ from asura.common.mio import AsuraIO
 
 @dataclass
 class ChunkHeader:
-    __meta_layout = Struct("<I I 4s")
-
     type: ChunkType = None
     # Includes the size of the header?! WHY WE ALREADY READ 4 BYTES AND ARE GOING TO READ 8 MORE REGARDLESS!
     length: int = None
