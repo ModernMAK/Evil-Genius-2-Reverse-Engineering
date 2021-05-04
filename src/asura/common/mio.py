@@ -145,13 +145,21 @@ class AsuraIO:
         """"""
         return self.stream.write(value)
 
+
+
     def read_int64(self, signed: bool = None) -> int:
         b = self.stream.read(INT64_SIZE)
         return int.from_bytes(b, self.byte_order, signed=signed)
 
+
     def write_int64(self, value: int, signed: bool = None) -> int:
         b = int.to_bytes(value, INT64_SIZE, self.byte_order, signed=signed)
         return self.stream.write(b)
+
+    @staticmethod
+    def swap_endian_int32(value:int, signed:bool = None) -> int:
+        b = int.to_bytes(value, INT32_SIZE,"little", signed=signed)
+        return int.from_bytes(b,"big",signed=signed)
 
     def read_int32(self, signed: bool = None) -> int:
         b = self.stream.read(INT32_SIZE)

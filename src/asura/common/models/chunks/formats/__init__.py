@@ -1,4 +1,4 @@
-__all__=[
+__all__ = [
     "FontInfoChunk",
     "HTextChunk",
     "HText",
@@ -7,8 +7,10 @@ __all__=[
     "ResourceListChunk",
     "SoundChunk",
     "SoundClip",
+    "HsbbChunk"
 ]
 
+from asura.common.models.chunks.formats.hsbb import HsbbChunk
 from asura.common.models.chunks.formats.fnfo import FontInfoChunk
 from asura.common.models.chunks.formats.htxt import HText, HTextChunk
 from asura.common.models.chunks.formats.rscf import ResourceChunk

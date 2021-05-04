@@ -23,14 +23,15 @@ RepackChunk = Callable[[str], BaseChunk]
 
 
 class ChunkParser:
-    from asura.common.models.chunks.formats import HTextChunk, SoundChunk, ResourceChunk, ResourceListChunk
+    from asura.common.models.chunks.formats import HTextChunk, SoundChunk, ResourceChunk, ResourceListChunk, HsbbChunk
     from asura.common.models.chunks import  RawChunk, EofChunk
     _map: Dict[ChunkType, ParseChunk] = {
         ChunkType.H_TEXT: HTextChunk.read,
         ChunkType.SOUND: SoundChunk.read,
         ChunkType.RESOURCE: ResourceChunk.read,
         ChunkType.RESOURCE_LIST: ResourceListChunk.read,
-        ChunkType.EOF: EofChunk.read
+        ChunkType.EOF: EofChunk.read,
+        ChunkType.HSBB: HsbbChunk.read
     }
     _default: ParseChunk = RawChunk.read
 
@@ -41,14 +42,15 @@ class ChunkParser:
 
 
 class ChunkPacker:
-    from asura.common.models.chunks.formats import HTextChunk, SoundChunk, ResourceChunk, ResourceListChunk
-    from asura.common.models.chunks import  RawChunk, EofChunk
+    from asura.common.models.chunks.formats import HTextChunk, SoundChunk, ResourceChunk, ResourceListChunk, HsbbChunk
+    from asura.common.models.chunks import RawChunk, EofChunk
     _unpack_map: Dict[ChunkType, UnpackChunk] = {
         ChunkType.H_TEXT: HTextChunk.unpack,
         ChunkType.SOUND: SoundChunk.unpack,
         ChunkType.RESOURCE: ResourceChunk.unpack,
         ChunkType.RESOURCE_LIST: ResourceListChunk.unpack,
-        ChunkType.EOF: EofChunk.unpack
+        ChunkType.EOF: EofChunk.unpack,
+        ChunkType.HSBB: HsbbChunk.unpack
     }
     _default_unpack: ParseChunk = RawChunk.unpack
     _repack_map: Dict[ChunkType, RepackChunk] = {

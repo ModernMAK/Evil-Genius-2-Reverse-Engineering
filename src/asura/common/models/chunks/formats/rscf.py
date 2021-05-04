@@ -8,10 +8,10 @@ from asura.common.models.chunks import BaseChunk, ChunkHeader
 
 @dataclass
 class ResourceBlob:
-    reserved_zero_a: int = None
     a: int = None
-    reserved_zero_b: int = None
+    reserved_zero_a: int = None
     b: int = None
+    reserved_zero_b: int = None
     reserved_one: int = None
     data: bytes = None
 
@@ -23,7 +23,7 @@ class ResourceBlob:
             b = reader.read_int32()
             zero_b = reader.read_int32()
             one = reader.read_int32()
-            return ResourceBlob( a, zero_a, b,  zero_b,one)
+            return ResourceBlob(a, zero_a, b, zero_b, one)
 
     def write_meta(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
@@ -51,8 +51,8 @@ class Resource:
             a = reader.read_int32()
             b = reader.read_int32()
             c = reader.read_int32()
-            parts = [ResourceBlob.read_meta(stream) for _ in range(count)]
-            return Resource(count, a,b,c, parts)
+            bolbs = [ResourceBlob.read_meta(stream) for _ in range(count)]
+            return Resource(count, a, b, c, bolbs)
 
 
 RAW_FILE_ID = 0
@@ -90,8 +90,12 @@ class ResourceChunk(BaseChunk):
                 name = reader.read_utf8(padded=True)
 
                 if id == RAW_FILE_ID and sub_id == RESOURCE_SUB_ID:
-                    data = None
+                    start = reader.stream.tell()
                     resource = Resource.read(stream)
+                    left_size = size - (reader.stream.tell() - start)
+                    data = reader.read(left_size)
+                    import magic
+                    print(magic.from_buffer(data), magic.from_buffer(data,True))
                 elif id in [RAW_FILE_ID, DDS_FILE, DEBUG_FILE, SOUND_FILE]:
                     data = reader.read(size)
                     resource = None

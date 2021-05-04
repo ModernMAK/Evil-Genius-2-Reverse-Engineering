@@ -113,7 +113,7 @@ class ChunkType(Enum):
     # UNKNOWN_MARE = "MARE"
     #
     # UNKNOWN_HSKN = "HSKN"
-    # UNKNOWN_HSBB = "HSBB"
+    HSBB = "HSBB"
     # UNKNOWN_HSKE = "HSKE"
     # UNKNOWN_HSKL = "HSKL"
     # UNKNOWN_HMPT = "HMPT"
