@@ -6,8 +6,11 @@ from typing import List, BinaryIO
 # WAVE FORMAT CODES AREN'T PROPRIETARY, THEIR STANDARDIZED
 # BUT ITS STILL IMPOSSIBLE TO GOOGLE THEM
 # https://www.codeproject.com/Questions/143294/WAV-file-compression-format-codes
+from asura.common.enums import ChunkType
 from asura.common.mio import AsuraIO, PackIO
 from asura.common.models.chunks import ChunkHeader, BaseChunk
+from asura.common.factories.chunk_packer import ChunkRepacker, ChunkUnpacker
+from asura.common.factories.chunk_parser import ChunkReader
 
 
 @dataclass
@@ -82,8 +85,9 @@ class SoundChunk(BaseChunk):
     def size(self):
         return len(self.clips)
 
-    @classmethod
-    def read(cls, stream: BinaryIO, header: ChunkHeader = None):
+    @staticmethod
+    @ChunkReader.register(ChunkType.SOUND)
+    def read(stream: BinaryIO, header: ChunkHeader = None):
         with AsuraIO(stream) as reader:
             size = reader.read_int32()
             is_sparse = reader.read_bool()
@@ -106,6 +110,7 @@ class SoundChunk(BaseChunk):
                         clip.write_data(stream)
         return written.length
 
+    @ChunkUnpacker.register(ChunkType.SOUND)
     def unpack(self, chunk_path: str, overwrite=False) -> bool:
         path = chunk_path + f".{self.header.type.value}"
         meta = {
@@ -120,8 +125,9 @@ class SoundChunk(BaseChunk):
             unpacked |= clip.unpack(chunk_path, overwrite)
         return unpacked
 
-    @classmethod
-    def repack(cls, chunk_path: str) -> 'SoundChunk':
+    @staticmethod
+    @ChunkRepacker.register(ChunkType.SOUND)
+    def repack(chunk_path: str) -> 'SoundChunk':
         meta = PackIO.read_meta(chunk_path, ext=PackIO.CHUNK_INFO_EXT)
 
         clips = []

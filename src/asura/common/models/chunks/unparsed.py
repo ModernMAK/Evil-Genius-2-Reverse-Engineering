@@ -6,15 +6,15 @@ from asura.common.models.chunks import BaseChunk
 
 
 @dataclass
-class UnparsedChunk(BaseChunk):
+class SparseChunk(BaseChunk):
     data_start: int = None
 
     def load(self, stream: BinaryIO) -> BaseChunk:
-        from asura.common.parsers import ChunkParser
+        from asura.common.factories.chunk_parser import ChunkReader
 
         prev_pos = stream.tell()
         stream.seek(self.data_start)
-        result = ChunkParser.parse(self.header, stream)
+        result = ChunkReader.read(self.header, stream)
         if result is not None:
             current = stream.tell()
             expected = self.data_start + self.header.chunk_size

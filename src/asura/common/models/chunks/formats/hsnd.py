@@ -9,57 +9,53 @@ from asura.common.factories.chunk_parser import ChunkReader
 
 
 @dataclass
-class HsbbDesc:
+class HsndBlock:
+    BLOCK_SIZE = 16 * 4
     data: bytes = None
-    one: int = None
 
     @staticmethod
-    def read(stream: BinaryIO):
-        with AsuraIO(stream) as reader:
-            data = reader.read(24)
-            one = reader.read_int32()
-        return HsbbDesc(data, one)
+    def read(stream: BinaryIO) -> 'HsndBlock':
+        data = stream.read(HsndBlock.BLOCK_SIZE)
+        return HsndBlock(data)
 
     def write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
-            with writer.byte_counter() as written:
-                writer.write(self.data)
-                writer.write_int32(self.one)
-        return written.length
-
+            with writer.byte_counter() as counter:
+                writer.safe_write(self.data, self.BLOCK_SIZE)
+            return counter.length
 
 @dataclass
-class HsbbChunk(BaseChunk):
+class HsndChunk(BaseChunk):
     name: str = None
-    descriptions: List[HsbbDesc] = None
+    data: List[HsndBlock] = None
 
-    @property
     def size(self):
-        return len(self.descriptions)
+        return len(self.data)
 
     @staticmethod
-    @ChunkReader.register(ChunkType.HSBB)
+    @ChunkReader.register(ChunkType.HSND)
     def read(stream: BinaryIO, header: ChunkHeader = None):
         with AsuraIO(stream) as reader:
-            name = reader.read_utf8(padded=True)
+            # with reader.byte_counter() as counter:
             size = reader.read_int32()
-            descriptions = [HsbbDesc.read(stream) for _ in range(size)]
-        return HsbbChunk(header, name, descriptions)
+            name = reader.read_utf8(padded=True)
+            data = [HsndBlock.read(stream) for _ in range(size)]
+        return HsndChunk(header, name, data)
 
     def write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
+                writer.write_int32(self.size())
                 writer.write_utf8(self.name, padded=True)
-                writer.write_int32(self.size)
-                for desc in self.descriptions:
-                    desc.write(stream)
+                for block in self.data:
+                    block.write(stream)
         return written.length
 
-    @ChunkUnpacker.register(ChunkType.HSBB)
+    @ChunkUnpacker.register(ChunkType.HSND)
     def unpack(self, chunk_path: str, overwrite=False):
         path = chunk_path + f".{self.header.type.value}"
-        meta = {'header': self.header, 'name': self.name}
-        data = self.descriptions
+        meta = self.header
+        data = {'name': self.name, 'data': self.data}
         return PackIO.write_meta_and_json(path, meta, data, overwrite, ext=PackIO.CHUNK_INFO_EXT)
 
     # @classmethod

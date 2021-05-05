@@ -2,8 +2,12 @@ from dataclasses import dataclass
 from os.path import join, basename
 from typing import BinaryIO, List
 
+from asura.common.enums import ChunkType
 from asura.common.mio import AsuraIO, PackIO
 from asura.common.models.chunks import BaseChunk, ChunkHeader
+from asura.common.factories import ChunkUnpacker
+from asura.common.factories.chunk_packer import ChunkRepacker
+from asura.common.factories.chunk_parser import ChunkReader
 
 
 @dataclass
@@ -81,6 +85,7 @@ class ResourceChunk(BaseChunk):
     resource: Resource = None
 
     @staticmethod
+    @ChunkReader.register(ChunkType.RESOURCE)
     def read(stream: BinaryIO, header: ChunkHeader):
         with AsuraIO(stream) as reader:
             with reader.byte_counter() as read:
@@ -114,6 +119,7 @@ class ResourceChunk(BaseChunk):
                 writer.write(self.data)
         return written.length
 
+    @ChunkUnpacker.register(ChunkType.RESOURCE)
     def unpack(self, chunk_path: str, overwrite=False):
         path = chunk_path + f".{self.header.type.value}"
         meta = {
@@ -128,8 +134,9 @@ class ResourceChunk(BaseChunk):
         written |= PackIO.write_bytes(join(path, basename(self.name)), data, overwrite)
         return written
 
-    @classmethod
-    def repack(cls, chunk_path: str) -> 'ResourceChunk':
+    @staticmethod
+    @ChunkRepacker.register(ChunkType.RESOURCE)
+    def repack(chunk_path: str) -> 'ResourceChunk':
         meta = PackIO.read_meta(chunk_path, ext=PackIO.CHUNK_INFO_EXT)
         data_path = join(chunk_path, basename(meta['name']))
         data = PackIO.read_bytes(data_path)

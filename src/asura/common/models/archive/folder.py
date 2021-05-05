@@ -3,7 +3,8 @@ from typing import List, BinaryIO, Iterable
 
 from asura.common.enums import ChunkType, ArchiveType
 from asura.common.models.archive import BaseArchive
-from asura.common.models.chunks import BaseChunk, ChunkHeader, UnparsedChunk
+from asura.common.models.chunks import BaseChunk, ChunkHeader, SparseChunk, EofChunk
+from asura.common.factories import ArchiveParser
 
 
 @dataclass
@@ -11,27 +12,28 @@ class FolderArchive(BaseArchive):
     chunks: List[BaseChunk]
 
     @staticmethod
-    def _read_chunk(stream: BinaryIO, sparse:bool=True) -> BaseChunk:
+    def _read_chunk(stream: BinaryIO, sparse: bool = True) -> BaseChunk:
         start = stream.tell()
         header = ChunkHeader.read(stream)
         # Always return EOF
         if header.type == ChunkType.EOF:
-            return BaseChunk(header)
-        result = UnparsedChunk(header, stream.tell())
+            return EofChunk(header)
+        result = SparseChunk(header, stream.tell())
         if not sparse:
             result = result.load(stream)
         stream.seek(start + header.length, 0)
         return result
 
-    @classmethod
-    def read(cls, stream: BinaryIO, type: ArchiveType = None, sparse:bool=True) -> 'FolderArchive':
+    @staticmethod
+    @ArchiveParser.register(ArchiveType.Folder)
+    def read(stream: BinaryIO, type: ArchiveType = None, sparse: bool = True) -> 'FolderArchive':
         if not type:
             type = ArchiveType.read(stream)
         if type != ArchiveType.Folder:
             raise NotImplementedError(f"Not Supported ~ {type}")
         result = FolderArchive(type, [])
         while True:
-            chunk = cls._read_chunk(stream,sparse)
+            chunk = FolderArchive._read_chunk(stream, sparse)
             result.chunks.append(chunk)
             if chunk.header.type == ChunkType.EOF:
                 break
@@ -53,12 +55,11 @@ class FolderArchive(BaseArchive):
         for chunk in self.chunks:
             loaded = False
             if filters is None or chunk.header.type in filters:
-                if isinstance(chunk, UnparsedChunk):
+                if isinstance(chunk, SparseChunk):
                     loaded = True
                     yield chunk.load(stream)
             if not loaded:
                 yield chunk
-
 
     def load(self, stream: BinaryIO, filters: List[ChunkType] = None) -> bool:
         """
@@ -72,7 +73,7 @@ class FolderArchive(BaseArchive):
             return loaded
         for i, chunk in enumerate(self.chunks):
             if filters is None or chunk.header.type in filters:
-                if isinstance(chunk, UnparsedChunk):
+                if isinstance(chunk, SparseChunk):
                     self.chunks[i] = chunk.load(stream)
                     loaded = True
         return loaded

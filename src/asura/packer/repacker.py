@@ -6,7 +6,7 @@ from asura.common.enums import ArchiveType
 from asura.common.mio import PackIO
 from asura.common.models.archive import FolderArchive
 from asura.common.models.chunks import BaseChunk
-from asura.common.parsers import ChunkPacker
+from asura.common.factories import ChunkUnpacker, ChunkRepacker, initialize_factories
 
 # The default root
 DEFAULT_ROOT_DIR = "repack"
@@ -17,7 +17,7 @@ DUMP_DIR = "archives"
 
 
 def repack_chunk(chunk_path: str) -> 'BaseChunk':
-    return ChunkPacker.repack_from_ext(chunk_path)
+    return ChunkRepacker.repack_from_ext(chunk_path)
 
 
 @dataclass
@@ -30,7 +30,7 @@ def repack_archive(archive_path: str, out_path: str, options: RepackOptions = No
     options = options or RepackOptions()
     chunks = []
     for chunk_path in PackIO.walk_chunks(archive_path):
-        chunk = ChunkPacker.repack_from_ext(chunk_path)
+        chunk = ChunkUnpacker.repack_from_ext(chunk_path)
         chunks.append(chunk)
 
     archive = FolderArchive(ArchiveType.Folder, chunks)
@@ -61,7 +61,7 @@ def repack_directory(search_dir: str, out_dir: str = None, repack_name: str = No
 #
 
 if __name__ == "__main__":
-
+    initialize_factories()
     se_group_root = r"E:\Downloads\sniper elite"
     # se1_root = join(se_group_root, "Sniper Elite")
     # se2_root = join(se_group_root, "Sniper Elite V2")

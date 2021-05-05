@@ -1,8 +1,12 @@
 from dataclasses import dataclass
 from typing import List, BinaryIO
 
+from asura.common.enums import ChunkType
 from asura.common.mio import AsuraIO, PackIO
 from asura.common.models.chunks import BaseChunk, ChunkHeader
+from asura.common.factories import ChunkUnpacker
+from asura.common.factories.chunk_packer import ChunkRepacker
+from asura.common.factories.chunk_parser import ChunkReader
 
 
 @dataclass
@@ -40,6 +44,7 @@ class ResourceListChunk(BaseChunk):
         return len(self.descriptions)
 
     @staticmethod
+    @ChunkReader.register(ChunkType.RESOURCE_LIST)
     def read(stream: BinaryIO, header: ChunkHeader = None):
         with AsuraIO(stream) as reader:
             size = reader.read_int32()
@@ -54,14 +59,16 @@ class ResourceListChunk(BaseChunk):
                     desc.write(stream)
         return written.length
 
+    @ChunkUnpacker.register(ChunkType.RESOURCE_LIST)
     def unpack(self, chunk_path: str, overwrite=False):
         path = chunk_path + f".{self.header.type.value}"
         meta = self.header
         data = self.descriptions
         return PackIO.write_meta_and_json(path, meta, data, overwrite, ext=PackIO.CHUNK_INFO_EXT)
 
-    @classmethod
-    def repack(cls, chunk_path: str) -> 'ResourceListChunk':
+    @staticmethod
+    @ChunkRepacker.register(ChunkType.RESOURCE_LIST)
+    def repack(chunk_path: str) -> 'ResourceListChunk':
         meta, data = PackIO.read_meta_and_json(chunk_path, ext=PackIO.CHUNK_INFO_EXT)
         descriptions = [ResourceDescription(**desc) for desc in data]
         header = ChunkHeader.repack_from_dict(meta)

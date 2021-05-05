@@ -142,24 +142,24 @@ class AsuraIO:
         return self.stream.read(n)
 
     def write(self, value: bytes) -> int:
-        """"""
         return self.stream.write(value)
 
-
+    def safe_write(self, value: bytes, size: int) -> int:
+        assert len(value) == size
+        return self.stream.write(value)
 
     def read_int64(self, signed: bool = None) -> int:
         b = self.stream.read(INT64_SIZE)
         return int.from_bytes(b, self.byte_order, signed=signed)
-
 
     def write_int64(self, value: int, signed: bool = None) -> int:
         b = int.to_bytes(value, INT64_SIZE, self.byte_order, signed=signed)
         return self.stream.write(b)
 
     @staticmethod
-    def swap_endian_int32(value:int, signed:bool = None) -> int:
-        b = int.to_bytes(value, INT32_SIZE,"little", signed=signed)
-        return int.from_bytes(b,"big",signed=signed)
+    def swap_endian_int32(value: int, signed: bool = None) -> int:
+        b = int.to_bytes(value, INT32_SIZE, "little", signed=signed)
+        return int.from_bytes(b, "big", signed=signed)
 
     def read_int32(self, signed: bool = None) -> int:
         b = self.stream.read(INT32_SIZE)
@@ -330,8 +330,9 @@ class PackIO:
     @staticmethod
     def make_parent_dirs(path: str):
         path = path.replace(r"\\\\?\\", "")
+        dir_path = dirname(path)
         try:
-            makedirs(dirname(path))
+            makedirs(dir_path)
         except FileExistsError:
             pass
 
@@ -380,7 +381,7 @@ class PackIO:
         return False
 
     @classmethod
-    def read_bytes(cls,path: str) -> bytes:
+    def read_bytes(cls, path: str) -> bytes:
         # path = cls.safe_path(path)
         with open(path, "rb") as data_file:
             return data_file.read()

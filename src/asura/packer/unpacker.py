@@ -8,7 +8,7 @@ from asura.common.error import ParsingError
 from asura.common.mio import PackIO
 from asura.common.models.archive import BaseArchive, FolderArchive, ZbbArchive
 from asura.common.models.chunks import BaseChunk
-from asura.common.parsers import ChunkPacker, ArchiveParser
+from asura.common.factories import ChunkUnpacker, ArchiveParser, initialize_factories
 
 # The default root
 DEFAULT_ROOT_DIR = "unpack"
@@ -89,7 +89,7 @@ def unpack_chunk(chunk: BaseChunk, chunk_name: str, options: UnpackOptions = Non
     options = options or UnpackOptions()
     chunk_path = options.create_path(chunk_name)
     print(f"\t\t\t{chunk_path}")
-    return ChunkPacker.unpack(chunk, chunk_path, options.overwrite_chunks)
+    return ChunkUnpacker.unpack(chunk, chunk_path, options.overwrite_chunks)
 
 
 def write_meta(name: str, options: UnpackOptions = None):
@@ -203,6 +203,7 @@ def unpack_directory(search_dir: str, options: UnpackOptions = None) -> Tuple[
 #
 
 if __name__ == "__main__":
+    initialize_factories()
     launcher_root = r"G:\Clients\Steam\Launcher"
     steam_root = r"C:\Program Files (x86)\Steam"
     eg_root = fr"steamapps\common\Evil Genius 2"

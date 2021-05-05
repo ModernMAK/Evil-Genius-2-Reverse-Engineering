@@ -112,10 +112,11 @@ class ChunkType(Enum):
     # UNKNOWN_TXAN = "TXAN"
     # UNKNOWN_MARE = "MARE"
     #
-    # UNKNOWN_HSKN = "HSKN"
+    HSKN = "HSKN"
     HSBB = "HSBB"
-    # UNKNOWN_HSKE = "HSKE"
-    # UNKNOWN_HSKL = "HSKL"
+    HSKE = "HSKE"
+    HSKL = "HSKL"
+    HSND = "HSND"
     # UNKNOWN_HMPT = "HMPT"
     #
     # UNKNOWN_INST = "INST"
@@ -125,7 +126,6 @@ class ChunkType(Enum):
     # UNKNOWN_FOG = "FOG "
     # UNKNOWN_WOFX = "WOFX"
     # UNKNOWN_HCAN = "HCAN"
-    # UNKNOWN_HSND = "HSND"
     # UNKNOWN_PHEN = "PHEN"
     # UNKNOWN_EMOD = "EMOD"
     # UNKNOWN_GISN = "GISN"
