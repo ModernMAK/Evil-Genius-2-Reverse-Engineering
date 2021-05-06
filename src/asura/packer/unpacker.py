@@ -143,6 +143,7 @@ def unpack_archive(archive: BaseArchive, archive_name: str, stream: BinaryIO = N
             else:
                 return False, -1, -1
         elif options.cache_decompressed:
+            PackIO.make_parent_dirs(cache_path)
             with open(cache_path, "w+b") as cached:
                 archive.decompress_to_stream(stream, cached)
                 if options.unpack_decompressed:

@@ -117,7 +117,7 @@ class ChunkType(Enum):
     HSKE = "HSKE"
     HSKL = "HSKL"
     HSND = "HSND"
-    # UNKNOWN_HMPT = "HMPT"
+    HMPT = "HMPT"
     #
     # UNKNOWN_INST = "INST"
     # UNKNOWN_PLUT = "PLUT"
