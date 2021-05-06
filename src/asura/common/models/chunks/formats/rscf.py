@@ -99,8 +99,8 @@ class ResourceChunk(BaseChunk):
                     resource = Resource.read(stream)
                     left_size = size - (reader.stream.tell() - start)
                     data = reader.read(left_size)
-                    import magic
-                    print(magic.from_buffer(data), magic.from_buffer(data,True))
+                    # import magic
+                    # print(magic.from_buffer(data), magic.from_buffer(data,True))
                 elif id in [RAW_FILE_ID, DDS_FILE, DEBUG_FILE, SOUND_FILE]:
                     data = reader.read(size)
                     resource = None

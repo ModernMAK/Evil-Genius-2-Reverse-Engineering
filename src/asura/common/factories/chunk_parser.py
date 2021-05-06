@@ -24,11 +24,11 @@ class ChunkReader:
         return wrapper
 
     @classmethod
-    def read(cls, header: ChunkHeader, stream: BinaryIO, validate:bool=True) -> BaseChunk:
+    def read(cls, header: ChunkHeader, stream: BinaryIO, validate: bool = True) -> BaseChunk:
         with AsuraIO(stream) as temp:
             with temp.byte_counter() as counter:
                 parser = cls._map.get(header.type, cls._default)
                 parsed = parser(stream, header)
                 if validate:
-                    assert counter.length == header.chunk_size
+                    assert counter.length == header.chunk_size, (header.type, counter.length, header.chunk_size)
                 return parsed

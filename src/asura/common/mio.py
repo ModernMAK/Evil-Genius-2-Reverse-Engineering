@@ -319,7 +319,13 @@ class EnhancedJSONEncoder(json.JSONEncoder):
         elif isinstance(o, Enum):
             return o.value
         elif isinstance(o, bytes):
-            return o.hex()
+            h = o.hex()
+            BYTES = 1
+            p = [h[2*BYTES*i:2*BYTES*i+2] for i in range(len(h)//(2*BYTES))]
+            leftover = len(h) % (2 * BYTES)
+            if leftover != 0:
+                p.append(h[-leftover])
+            return " ".join(p)
         return super().default(o)
 
 
