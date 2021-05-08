@@ -9,6 +9,7 @@ from typing import List, BinaryIO, Iterable, Dict, Tuple
 
 from asura.common.config import MEBI_BYTE, INT64_SIZE, INT32_SIZE, INT16_SIZE, WORD_SIZE
 from asura.common.enums.chunk_type import GenericChunkType
+from asura.common.error import ParsingError
 
 
 def bytes_to_word_boundary(index: int, word_size: int) -> int:
@@ -204,6 +205,7 @@ class AsuraIO:
         return self.stream.write(value)
 
     def read_utf8(self, size: int = None, *, padded=False, strip_terminal=True, read_size=False) -> str:
+        origin = self.stream.tell()
         if read_size and size is not None:
             raise ValueError("Cannot use read_size and size!")
         if read_size:
@@ -230,7 +232,7 @@ class AsuraIO:
         try:
             return value.decode("utf-8")
         except UnicodeDecodeError as e:
-            raise IOError(f"Cannot read utf8: {repr(value)}") from e
+            raise ParsingError(origin) from e
 
     def write_utf8(self, value: str, *, padded=False, enforce_terminal=True, write_size=False) -> int:
         if enforce_terminal:

@@ -138,7 +138,7 @@ class HsknChunk(BaseChunk):
     variant_word_b: bytes = None
 
     @staticmethod
-    @ChunkReader.register(ChunkType.HSKN)
+    # @ChunkReader.register(ChunkType.HSKN)
     def read(stream: BinaryIO, header: ChunkHeader = None):
         if header.reserved[0] == 0xcd:
             print("0xcd HSKN chunks are not yet supported! Using raw chunk instead!")
@@ -189,7 +189,7 @@ class HsknChunk(BaseChunk):
                          b_words_c, b_words_d, data, variant_count, v_word_a,
                          variants, v_word_b)
 
-    @ChunkUnpacker.register(ChunkType.HSKN)
+    # @ChunkUnpacker.register(ChunkType.HSKN)
     def unpack(self, chunk_path: str, overwrite=False):
         if self.header.reserved[0] == 0xcd:
             print("\t\t\t\t0xcd HSKN chunks are not yet supported! Using raw chunk instead!") # Aside

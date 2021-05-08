@@ -4,8 +4,7 @@ from typing import List, BinaryIO
 from asura.common.enums import ChunkType
 from asura.common.mio import AsuraIO, PackIO
 from asura.common.models.chunks import BaseChunk, ChunkHeader
-from asura.common.factories import ChunkUnpacker
-from asura.common.factories.chunk_parser import ChunkReader
+from asura.common.factories import ChunkUnpacker, ChunkReader
 
 
 @dataclass
