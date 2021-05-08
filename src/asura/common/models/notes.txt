@@ -8,3 +8,9 @@ MagicWord [8] ~ 'Asura   ', AsuraCmp, AsuraZlb, AsuraZbb
 
 Asura
 
+STSC Chunks
+	Word ~ 4 bytes
+	Word Size A ~ 4 Bytes
+		Words A ~ 4 * A Size
+	Word Size B ~ 4 Bytes
+		Words B ~ 4 * B Size
