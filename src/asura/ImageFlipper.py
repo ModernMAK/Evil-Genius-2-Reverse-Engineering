@@ -31,8 +31,11 @@ def flip(data: bytes, ext: str = "dds", vert: bool = False) -> bytes:
     finally:
         if name is not None:
             os.remove(name)
-        if out_name is not None:
-            os.remove(out_name)
+        try:
+            if out_name is not None:
+                os.remove(out_name)
+        except FileNotFoundError:
+            pass
 
 
 def flip_archive(archive: FolderArchive):
@@ -44,26 +47,36 @@ def flip_archive(archive: FolderArchive):
 
 
 if __name__ == "__main__":
-    path = r"G:\Clients\Steam\Launcher\steamapps\common\Evil Genius 2\GUI\main.asr.original"
+    SPINNER = "|/-\\"
+
+    def decomp_callback(i,total):
+        print(f"\r\t\t({SPINNER[i % len(SPINNER)]}) Decompressing Blocks [{i + 1}/{total}]",end="" if i+1 != total else "\n")
+
+    def comp_callback(i,total):
+        print(f"\r\t\t({SPINNER[i % len(SPINNER)]}) Compressing Blocks [{i + 1}/{total}]",end="" if i+1 != total else "\n")
+
+    launcher_root = r"G:\Clients\Steam\Launcher"
+    steam_root = r"C:\Program Files (x86)\Steam"
+    path = fr"{steam_root}\steamapps\common\Evil Genius 2\GUI\main.asr"
     with BytesIO() as decomp:
         with open(path, "rb") as comp:
             comp_archive: ZbbArchive = ArchiveParser.parse(comp)
-            print(len(comp_archive.chunks))
-            for block in comp_archive.chunks:
-                print("\t","CompSize:", block.compressed_size)
-                print("\t","Size:",block.size)
+            # print(len(comp_archive.blocks))
+            # for block in comp_archive.blocks:
+                # print("\t","CompSize:", block.compressed_size)
+                # print("\t","Size:",block.size)
             # exit()
 
-            comp_archive.decompress_to_stream(comp, decomp)
+            comp_archive.decompress_to_stream(comp, decomp, callback=decomp_callback)
 
         decomp.seek(0)
 
         decomp_archive: FolderArchive = ArchiveParser.parse(decomp)
-        print(len(decomp_archive.chunks))
-        exit()
+        # print(len(decomp_archive.chunks))
+        # exit()
         decomp_archive.load(decomp)
 
     flip_archive(decomp_archive)
     with open(path, "wb") as comp:
-        ZbbArchive.compress(decomp_archive, comp)
-        print(f"Saved to {path}")
+        ZbbArchive.compress(decomp_archive, comp, callback=comp_callback)
+        # print(f"Saved to {path}")

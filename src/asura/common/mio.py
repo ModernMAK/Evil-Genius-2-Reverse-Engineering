@@ -45,9 +45,10 @@ class IORange:
 
 class ZLibIO:
     # Chunk
-    def __init__(self, stream: BinaryIO, chunk_size: int = 2 * MEBI_BYTE):
+    def __init__(self, stream: BinaryIO, block_size: int = 2 * MEBI_BYTE):
         self.stream = stream
-        self.chunk_size = chunk_size
+        self.block_size = block_size
+
         self.compressor = zlib.compressobj()
         self.decompressor = zlib.decompressobj()
 
@@ -57,45 +58,103 @@ class ZLibIO:
     def __exit__(self, type, value, traceback):
         pass
 
-    def _calc_chunk_sizes(self, size: int) -> Iterable[int]:
-        for _ in range(size // self.chunk_size):
-            yield self.chunk_size
-        remainder = size % self.chunk_size
+    def _get_block_size(self, size: int) -> int:
+        return self.get_block_size(size, self.block_size)
+
+    @staticmethod
+    def get_block_size(size: int, block_size: int) -> int:
+        if size >= block_size:
+            return block_size
+        else:
+            return size
+
+    def _block_iterator(self, size: int) -> Iterable[int]:
+        return self.block_iterator(size, self.block_size)
+
+    @staticmethod
+    def block_iterator(size: int, block_size: int = 2 * MEBI_BYTE) -> Iterable[int]:
+        for _ in range(size // block_size):
+            yield block_size
+        remainder = size % block_size
         if remainder != 0:
             yield remainder
+
+    @staticmethod
+    def block_count(size: int, block_size: int = 2 * MEBI_BYTE) -> int:
+        block_count = size // block_size
+        remainder = size % block_size
+        if remainder != 0:
+            block_count += 1
+        return block_count
 
     @staticmethod
     def _calc_stream_size(stream: BinaryIO) -> int:
         bookmark = stream.tell()
         stream.seek(0, 2)  # Seek to end
-        size = stream.tell()
+        size = stream.tell() - bookmark
         stream.seek(bookmark)
         return size
 
-    def compress(self, stream: BinaryIO, size: int = None) -> int:
-        if not size:
-            size = self._calc_stream_size(stream)
-
+    def _decompress_flush(self, stream: BinaryIO, flush: bool = False) -> int:
         written = 0
-        for chunk_bytes in self._calc_chunk_sizes(size):
-            chunk = stream.read(chunk_bytes)
-            compressed_chunk = self.compressor.compress(chunk)
-            written += self.stream.write(compressed_chunk)
-        return written
-
-    def decompress(self, stream: BinaryIO, size: int = None, flush: bool = True) -> int:
-        if not size:
-            size = self._calc_stream_size(self.stream)
-        written = 0
-
-        for chunk_bytes in self._calc_chunk_sizes(size):
-            compressed_chunk = self.stream.read(chunk_bytes)
-            chunk = self.decompressor.decompress(compressed_chunk)
-            written += stream.write(chunk)
         if flush:
             chunk = self.decompressor.flush()
             written += stream.write(chunk)
             del self.decompressor
+        return written
+
+    def _compress_flush(self, stream: BinaryIO, flush: bool = False) -> int:
+        written = 0
+        if flush:
+            chunk = self.compressor.flush()
+            written += stream.write(chunk)
+            del self.compressor
+        return written
+
+    # This will only compress, at most, one block, returns the bytes written and the remaining length
+    def compress_block(self, stream: BinaryIO, size: int = None, flush: bool = False) -> Tuple[int, int]:
+        if not size:
+            size = self._calc_stream_size(stream)
+        written = 0
+        block_size = self._get_block_size(size)
+        chunk = stream.read(block_size)
+        compressed_chunk = self.compressor.compress(chunk)
+        written += self.stream.write(compressed_chunk)
+        written += self._compress_flush(stream, flush)
+        return written, size - block_size
+
+    # This will only decompress, at most, one block, returns the bytes written and the remaining length
+    def decompress_block(self, stream: BinaryIO, size: int = None, flush: bool = False) -> Tuple[int, int]:
+        if not size:
+            size = self._calc_stream_size(self.stream)
+        written = 0
+        block_size = self._get_block_size(size)
+        compressed_chunk = self.stream.read(block_size)
+        chunk = self.decompressor.decompress(compressed_chunk)
+        written += stream.write(chunk)
+        written += self._decompress_flush(stream, flush)
+        return written, size - block_size
+
+    # This will compress as many blocks as required to compress the stream, up to the given size
+    def compress(self, stream: BinaryIO, size: int = None, flush: bool = True) -> int:
+        if not size:
+            size = self._calc_stream_size(stream)
+        written = 0
+        for block_size in self._block_iterator(size):
+            block_written, _ = self.compress_block(stream, block_size, False)
+            written += block_written
+        written += self._compress_flush(stream, flush)
+        return written
+
+    # This will decompress as many blocks as required to decompress the stream, up to the given size
+    def decompress(self, stream: BinaryIO, size: int = None, flush: bool = True) -> int:
+        if not size:
+            size = self._calc_stream_size(self.stream)
+        written = 0
+        for block_size in self._block_iterator(size):
+            block_written, _ = self.decompress_block(stream, block_size, False)
+            written += block_written
+        written += self._decompress_flush(stream, flush)
         return written
 
 
@@ -133,6 +192,14 @@ class AsuraIO:
         :return: An IORange context
         """
         return IORange(self.stream)
+
+    def get_length(self) -> int:
+        with self.bookmark():
+            self.stream.seek(0, 2)
+            return self.stream.tell()
+
+    def get_length_remaining(self) -> int:
+        return self.get_length() - self.stream.tell()
 
     def read(self, n: int = -1) -> bytes:
         """
@@ -323,7 +390,7 @@ class EnhancedJSONEncoder(json.JSONEncoder):
         elif isinstance(o, bytes):
             h = o.hex()
             BYTES = 1
-            p = [h[2*BYTES*i:2*BYTES*i+2] for i in range(len(h)//(2*BYTES))]
+            p = [h[2 * BYTES * i:2 * BYTES * i + 2] for i in range(len(h) // (2 * BYTES))]
             leftover = len(h) % (2 * BYTES)
             if leftover != 0:
                 p.append(h[-leftover])
