@@ -49,24 +49,23 @@ def flip_archive(archive: FolderArchive):
 if __name__ == "__main__":
     SPINNER = "|/-\\"
 
-    def decomp_callback(i,total):
-        print(f"\r\t\t({SPINNER[i % len(SPINNER)]}) Decompressing Blocks [{i + 1}/{total}]",end="" if i+1 != total else "\n")
 
-    def comp_callback(i,total):
-        print(f"\r\t\t({SPINNER[i % len(SPINNER)]}) Compressing Blocks [{i + 1}/{total}]",end="" if i+1 != total else "\n")
+    def decomp_callback(i, total):
+        print(f"\r\t\t({SPINNER[i % len(SPINNER)]}) Decompressing Blocks [{i + 1}/{total}]",
+              end="" if i + 1 != total else "\n", flush=True)
+
+
+    def comp_callback(i, total):
+        print(f"\r\t\t({SPINNER[i % len(SPINNER)]}) Compressing Blocks [{i + 1}/{total}]",
+              end="" if i + 1 != total else "\n", flush=True)
+
 
     launcher_root = r"G:\Clients\Steam\Launcher"
     steam_root = r"C:\Program Files (x86)\Steam"
-    path = fr"{steam_root}\steamapps\common\Evil Genius 2\GUI\main.asr"
+    path = fr"{launcher_root}\steamapps\common\Evil Genius 2\GUI\main.asr"
     with BytesIO() as decomp:
         with open(path, "rb") as comp:
             comp_archive: ZbbArchive = ArchiveParser.parse(comp)
-            # print(len(comp_archive.blocks))
-            # for block in comp_archive.blocks:
-                # print("\t","CompSize:", block.compressed_size)
-                # print("\t","Size:",block.size)
-            # exit()
-
             comp_archive.decompress_to_stream(comp, decomp, callback=decomp_callback)
 
         decomp.seek(0)
@@ -79,4 +78,4 @@ if __name__ == "__main__":
     flip_archive(decomp_archive)
     with open(path, "wb") as comp:
         ZbbArchive.compress(decomp_archive, comp, callback=comp_callback)
-        # print(f"Saved to {path}")
+        print(f"Saved to {path}")

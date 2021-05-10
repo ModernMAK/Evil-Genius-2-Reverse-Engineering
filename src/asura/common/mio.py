@@ -120,7 +120,7 @@ class ZLibIO:
         chunk = stream.read(block_size)
         compressed_chunk = self.compressor.compress(chunk)
         written += self.stream.write(compressed_chunk)
-        written += self._compress_flush(stream, flush)
+        written += self._compress_flush(self.stream, flush)
         return written, size - block_size
 
     # This will only decompress, at most, one block, returns the bytes written and the remaining length

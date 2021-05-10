@@ -80,6 +80,7 @@ class ZbbArchive(BaseArchive):
             while stream.tell() < end:
                 chunk = ZbbBlock.read(stream)
                 chunks.append(chunk)
+            assert stream.tell() == end
             return ZbbArchive(type, _size, _compressed_size, chunks)
 
     # First step in creating manual Zbb Archive when writing compressed streams
@@ -92,10 +93,10 @@ class ZbbArchive(BaseArchive):
             _start = stream.tell()
         return ZbbArchive(ArchiveType.Zbb, size, None, [], _start)
 
-    def write_stop(self, stream: BinaryIO, compressed_size: int):
+    def write_stop(self, stream: BinaryIO):#, compressed_size: int):
         if self.compressed_size is not None:
             raise ValueError("Writing has already stopped")
-        self.compressed_size = compressed_size
+        self.compressed_size = stream.tell() - self._start
         with AsuraIO(stream) as writer:
             with writer.bookmark():
                 writer.stream.seek(self._start - 8, 0)  # seek to compressed_size
@@ -132,9 +133,10 @@ class ZbbArchive(BaseArchive):
             if callback:
                 callback(i, blocks)
             block = ZbbBlock.compress_to_stream(in_stream, out_stream, block_size)
-            compressed_size += block.compressed_size
+            compressed_size += block.compressed_size + 8 # 8 bytes for block header
             archive.blocks.append(block)
-        archive.write_stop(out_stream, compressed_size)
+        archive.write_stop(out_stream)
+        assert archive.compressed_size == compressed_size, ("Comp Size", archive.compressed_size, compressed_size)
         # the compressed size excludes the block headers; so we have to ignore that when asserting
         return archive
 
