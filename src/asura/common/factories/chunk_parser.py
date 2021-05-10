@@ -2,9 +2,9 @@ from typing import Dict, Callable, BinaryIO
 
 from asura.common.enums import ChunkType
 from asura.common.mio import AsuraIO
-from asura.common.models.chunks import ChunkHeader, BaseChunk
+# from asura.common.models.chunks import ChunkHeader, BaseChunk
 
-ParseChunk = Callable[[BinaryIO, ChunkHeader], BaseChunk]
+ParseChunk = Callable[[BinaryIO, 'ChunkHeader'], 'BaseChunk']
 
 
 class ChunkReader:
@@ -24,7 +24,7 @@ class ChunkReader:
         return wrapper
 
     @classmethod
-    def read(cls, header: ChunkHeader, stream: BinaryIO, validate: bool = True) -> BaseChunk:
+    def read(cls, header: 'ChunkHeader', stream: BinaryIO, validate: bool = True) -> 'BaseChunk':
         with AsuraIO(stream) as temp:
             with temp.byte_counter() as counter:
                 parser = cls._map.get(header.type, cls._default)

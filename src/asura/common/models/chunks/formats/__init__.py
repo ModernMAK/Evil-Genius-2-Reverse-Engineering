@@ -1,6 +1,6 @@
 __all__ = [
     "FontInfoChunk",
-    "HTextChunk",    "HText",
+    "HTextChunk", "HString",
 
     "ResourceChunk",
     "ResourceListChunk",    "ResourceDescription",
@@ -22,7 +22,7 @@ from asura.common.models.chunks.formats.hske import HskeChunk
 from asura.common.models.chunks.formats.hskl import HsklChunk
 from asura.common.models.chunks.formats.hskn import HsknChunk
 from asura.common.models.chunks.formats.hsnd import HsndChunk
-from asura.common.models.chunks.formats.htxt import HText, HTextChunk
+from asura.common.models.chunks.formats.htxt import HString, HTextChunk
 from asura.common.models.chunks.formats.rscf import ResourceChunk
 from asura.common.models.chunks.formats.rsfl import ResourceListChunk, ResourceDescription
 from asura.common.models.chunks.formats.asts import SoundChunk, SoundClip

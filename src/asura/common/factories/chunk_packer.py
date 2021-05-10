@@ -1,19 +1,19 @@
 from os.path import splitext
 from typing import Dict, Callable
 
-from asura.common.enums import ChunkType
-from asura.common.models.chunks import BaseChunk
+# from asura.common.enums import ChunkType
+# from asura.common.models.chunks import BaseChunk
 
-UnpackChunk = Callable[[BaseChunk, str, bool], bool]
-RepackChunk = Callable[[str], BaseChunk]
+UnpackChunk = Callable[['BaseChunk', str, bool], bool]
+RepackChunk = Callable[[str], 'BaseChunk']
 
 
 class ChunkUnpacker:
-    _map: Dict[ChunkType, UnpackChunk] = {}
+    _map: Dict['ChunkType', UnpackChunk] = {}
     _default: UnpackChunk = None
 
     @classmethod
-    def register(cls, type: ChunkType = None) -> Callable[[UnpackChunk], UnpackChunk]:
+    def register(cls, type: 'ChunkType' = None) -> Callable[[UnpackChunk], UnpackChunk]:
         def wrapper(func: UnpackChunk) -> UnpackChunk:
             if type is None:
                 cls._default = func
@@ -24,17 +24,17 @@ class ChunkUnpacker:
         return wrapper
 
     @classmethod
-    def unpack(cls, chunk: BaseChunk, chunk_path: str, overwrite: bool = False) -> bool:
+    def unpack(cls, chunk: 'BaseChunk', chunk_path: str, overwrite: bool = False) -> bool:
         unpacker = cls._map.get(chunk.header.type, cls._default)
         return unpacker(chunk, chunk_path, overwrite)
 
 
 class ChunkRepacker:
-    _map: Dict[ChunkType, RepackChunk] = {}
+    _map: Dict['ChunkType', RepackChunk] = {}
     _default: RepackChunk = None
 
     @classmethod
-    def register(cls, type: ChunkType = None) -> Callable[[RepackChunk], RepackChunk]:
+    def register(cls, type: 'ChunkType' = None) -> Callable[[RepackChunk], RepackChunk]:
         def wrapper(func: RepackChunk) -> RepackChunk:
             if type is None:
                 cls._default = func
@@ -44,12 +44,13 @@ class ChunkRepacker:
 
         return wrapper
     @classmethod
-    def repack(cls, chunk_type: ChunkType, path: str) -> BaseChunk:
+    def repack(cls, chunk_type: 'ChunkType', path: str) -> 'BaseChunk':
         repacker = cls._map.get(chunk_type, cls._default)
         return repacker(path)
 
     @classmethod
-    def repack_from_ext(cls, path: str) -> BaseChunk:
+    def repack_from_ext(cls, path: str) -> 'BaseChunk':
+        from asura.common.enums import ChunkType
         _, ext = splitext(path)
         ext = ext[1:]
         if len(ext) < 4:

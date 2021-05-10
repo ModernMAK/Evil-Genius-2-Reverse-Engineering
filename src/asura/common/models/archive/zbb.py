@@ -31,6 +31,7 @@ class ZbbChunk:
                 stream.seek(self._start, 0)
                 return stream.read(self.compressed_size)
 
+
     # def decompress(self, stream: BinaryIO) -> 'Archive':
     #     pass
 
@@ -89,50 +90,59 @@ class ZbbArchive(BaseArchive):
 
     @staticmethod
     def compress_to_stream(in_stream: BinaryIO, out_stream: BinaryIO) -> int:
+        DECOMP_SYMBOLS = "|/-\\"
+        STEP = 1
         with AsuraIO(in_stream) as reader:
             with reader.bookmark():
                 with reader.bookmark() as current:
                     reader.stream.seek(0, 2)
-                    len = reader.stream.tell() - current
+                    archive_len = reader.stream.tell() - current
 
                 with AsuraIO(out_stream) as writer:
                     with writer.byte_counter() as written:
                         with ZLibIO(out_stream) as compressor:
-                            compressed_size_total = 0
 
                             def write_chunk(chunk_size: int = None):
-                                global compressed_size_total
-
                                 chunk_start = writer.stream.tell()
                                 writer.write_int32(0)
-                                writer.write_int32(compressor.chunk_size)
+                                writer.write_int32(chunk_size or compressor.chunk_size)
                                 compressed_size = compressor.compress(in_stream, chunk_size or compressor.chunk_size)
-                                compressed_size_total = compressed_size
                                 with writer.bookmark():
-                                    writer.stream.seek(0, chunk_start)
+                                    writer.stream.seek(chunk_start, 0)
                                     writer.write_int32(compressed_size)
 
                             start = writer.stream.tell()  # Allows us to write to the 'Header' again
                             writer.write_int32(0)
-                            writer.write_int32(len)
-                            chunks = len // compressor.chunk_size
-                            remainder = len % compressor.chunk_size
-                            for _ in range(chunks):
-                                write_chunk()
-                            if remainder > 0:
-                                write_chunk(remainder)
+                            writer.write_int32(archive_len)
+                            with writer.byte_counter() as total_compressed_size:
+                                chunks = archive_len // compressor.chunk_size
+                                print(f"\r\t\tCompressing {chunks+1} Chunks", end="")
+                                remainder = archive_len % compressor.chunk_size
+                                for i in range(chunks):
+                                    if i % STEP == 0:
+                                        print(f"\r\t\t({DECOMP_SYMBOLS[(i // STEP) % len(DECOMP_SYMBOLS)]}) Decompressing Chunks [{i+1}/{chunks+1}]", end="")
+                                    write_chunk()
+                                if remainder > 0:
+                                    print(
+                                        f"\r\t\t({DECOMP_SYMBOLS[(i // STEP) % len(DECOMP_SYMBOLS)]}) Decompressing Chunks [{chunks + 1}/{chunks + 1}]",
+                                        end="")
 
-                            with writer.bookmark():
-                                writer.stream.seek(start)
-                                writer.write_int32(compressed_size_total)
+                                    write_chunk(remainder)
+
+                                compressed_length=total_compressed_size.length
+                                with writer.bookmark():
+                                    writer.stream.seek(start)
+                                    writer.write_int32(compressed_length)
+                    print(f"\r\t\tCompressed {chunks+1} Chunks")
                     return written.length
 
     @classmethod
     def compress(cls, archive: 'BaseArchive', out_stream: BinaryIO) -> int:
+        magic = ArchiveType.Zbb.write(out_stream)
         with BytesIO() as temp_stream:
             archive.write(temp_stream)
             temp_stream.seek(0)
-            return cls.compress_to_stream(temp_stream, out_stream)
+            return magic + cls.compress_to_stream(temp_stream, out_stream)
     # def compress(self, in_stream: BinaryIO, out_stream: BinaryIO):
     #     pass
 

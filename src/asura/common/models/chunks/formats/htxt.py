@@ -9,7 +9,7 @@ from asura.common.factories.chunk_parser import ChunkReader
 
 
 @dataclass
-class HText:
+class HString:
     key: str = None
     text: List[str] = None
     # I Still don't know what this is; but I know it's not a unique identifier;
@@ -25,12 +25,12 @@ class HText:
         return len(self.raw_text)
 
     @classmethod
-    def read(cls, stream: BinaryIO) -> 'HText':
+    def read(cls, stream: BinaryIO) -> 'HString':
         with AsuraIO(stream) as reader:
             unknown = reader.read_int32()
             raw_text = reader.read_utf16(read_size=True)
             text = split_asura_richtext(raw_text)
-        return HText(text=text, unknown=unknown)
+        return HString(text=text, unknown=unknown)
 
     def write(self, stream: BinaryIO) -> int:
         written = 0
@@ -46,7 +46,7 @@ CURRENT_HTEXT_VERSION = 4
 class HTextChunk(BaseChunk):
 
     key: str = None
-    parts: List[HText] = None
+    parts: List[HString] = None
     word_a: bytes = None
     # THIS NUMBER IS ONLY THE BYTES USES TO ENCODE UTF-16
     #   It does not include the 8 bytes to store the metadata (size and secret)
@@ -71,7 +71,7 @@ class HTextChunk(BaseChunk):
             unknown_word = reader.read_word()
             parts_size = reader.read_int32()
             language = LangCode.read(stream)
-            parts = [HText.read(stream) for _ in range(size)]
+            parts = [HString.read(stream) for _ in range(size)]
             key = reader.read_utf8(padded=True)
             part_keys = reader.read_utf8_list()
             for i, part in enumerate(parts):
@@ -111,7 +111,7 @@ class HTextChunk(BaseChunk):
     @ChunkRepacker.register(ChunkType.H_TEXT)
     def repack(chunk_path: str) -> 'HTextChunk':
         meta, data = PackIO.read_meta_and_json(chunk_path, ext=PackIO.CHUNK_INFO_EXT)
-        parts = [HText(**d) for d in data]
+        parts = [HTextField(**d) for d in data]
 
         header = ChunkHeader.repack_from_dict(meta['header'])
         del meta['header']

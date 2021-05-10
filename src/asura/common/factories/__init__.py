@@ -7,9 +7,9 @@ __all__ = [
     "initialize_factories"
 ]
 
-from asura.common.factories.archive_parser import ArchiveParser
 from asura.common.factories.chunk_packer import ChunkUnpacker, ChunkRepacker
 from asura.common.factories.chunk_parser import ChunkReader
+from asura.common.factories.archive_parser import ArchiveParser
 
 initialized: bool = False
 
