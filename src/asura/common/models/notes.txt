@@ -1,0 +1,24 @@
+Name [bytes] ~ values
+
+Asura Format:
+MagicWord [8] ~ 'Asura   ', AsuraCmp, AsuraZlb, AsuraZbb
+    I dont know what Cmp and Zbb mean; Compressed and Zip of some kind
+    I consider these to only be two types; Archive and Compressed Archive
+... See SubFormats ~ TODO WRITE SUBFORMAT NOTES
+
+Asura
+
+STSC Chunks
+	Word ~ 4 bytes
+	Word Size A ~ 4 Bytes
+		Words A ~ 4 * A Size
+	Word Size B ~ 4 Bytes
+		Words B ~ 4 * B Size
+
+
+
+VTEX Might be Block Count ~ Read in rest of chunk header / Block Count?
+    This is based off one file and the coincidence that the first word is small, and was divisble by the file size
+    Another coincidence; the last byte of every block was FF
+        Actually, every word ends in FF WHICH MAKES SENSE IF THIS IS A 32 bit texture (RGBA) with no alpha!
+            
