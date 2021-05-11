@@ -2,7 +2,7 @@ from io import BytesIO
 from typing import BinaryIO, Union
 
 from asura.common.enums import LangCode
-from asura.common.models.chunks import HText, HTextChunk
+from asura.common.models.chunks.formats import HString, HTextChunk
 
 LITTLE = "little"
 
@@ -33,11 +33,11 @@ htext_chunk_raw = b"\x01\x00\x00\x00" \
                   b"test\x00"
 
 
-def create_raw_htext_from_full(t: HText) -> HText:
-    return HText(None, [v for v in t.text] if t.text else None, t.unknown)
+def create_raw_htext_from_full(t: HString) -> HString:
+    return HString(None, [v for v in t.text] if t.text else None, t.unknown)
 
 
-htext = HText("test", ["This is a htext test."], int.from_bytes(b"\xef\xee\xed\xec", "little"))
+htext = HString("test", ["This is a htext test."], int.from_bytes(b"\xef\xee\xed\xec", "little"))
 htext_from_raw = create_raw_htext_from_full(htext)
 htext_chunk = HTextChunk(
     key="TEST",
@@ -55,7 +55,7 @@ def assert_bytes(value: Union[bytes, BinaryIO], expected: bytes):
         assert a == b
 
 
-def assert_htext(value: HText, expected: HText):
+def assert_htext(value: HString, expected: HString):
     assert value.size == expected.size
     assert value.key == expected.key
     assert value.raw_text == expected.raw_text
@@ -68,7 +68,7 @@ def assert_htext_chunk(value: HTextChunk, expected: HTextChunk):
     assert value.language == expected.language
     assert value.data_byte_length == expected.data_byte_length
     assert value.size == expected.size
-    for v, e in zip(value.count, expected.count):
+    for v, e in zip(value.parts, expected.parts):
         assert_htext(v, e)
 
 
@@ -77,7 +77,7 @@ def test_chunk_read():
         chunk = HTextChunk.read(reader)
         assert_htext_chunk(chunk, htext_chunk)
 
-    for v, e in zip(chunk.count, htext_chunk.count):
+    for v, e in zip(chunk.parts, htext_chunk.parts):
         assert_htext(v, e)
 
 
@@ -100,7 +100,7 @@ def test_chunk_write_readback():
 
 def test_clip_read_writeback():
     with BytesIO(htext_raw) as reader:
-        part = HText.read(reader)
+        part = HString.read(reader)
 
     with BytesIO() as writer:
         part.write(writer)
@@ -112,6 +112,6 @@ def test_clip_write_readback():
         htext_from_raw.write(writer)
 
         writer.seek(0)
-        read = HText.read(writer)
+        read = HString.read(writer)
 
     assert_htext(read, htext_from_raw)
