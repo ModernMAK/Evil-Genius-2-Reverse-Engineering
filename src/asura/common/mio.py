@@ -44,13 +44,17 @@ class IORange:
 
 
 class ZLibIO:
+    BLOCKSIZE_32768 = 15
+    BLOCKSIZE_4096 = 12
+    BLOCK_7 = BLOCKSIZE_32768
+    BLOCK_4 = BLOCKSIZE_4096
     # Chunk
     def __init__(self, stream: BinaryIO, block_size: int = 2 * MEBI_BYTE):
         self.stream = stream
         self.block_size = block_size
 
-        self.compressor = zlib.compressobj()
-        self.decompressor = zlib.decompressobj()
+        self.compressor = zlib.compressobj(wbits=self.BLOCK_4)
+        self.decompressor = zlib.decompressobj(wbits=self.BLOCK_4)
 
     def __enter__(self) -> 'ZLibIO':
         return self
