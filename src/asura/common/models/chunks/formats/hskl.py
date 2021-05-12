@@ -18,7 +18,8 @@ class HsklChunk(BaseChunk):
     def __eq__(self, other):
         if not isinstance(other, HsklChunk):
             return False
-        return self.parent_name == other.parent_name and \
+        return self.header == other.header and \
+            self.parent_name == other.parent_name and \
             self.child_name == other.child_name and \
             self.zero == other.zero and \
             self.word == other.word

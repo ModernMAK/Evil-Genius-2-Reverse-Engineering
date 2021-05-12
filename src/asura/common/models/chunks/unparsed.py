@@ -19,7 +19,7 @@ class SparseChunk(BaseChunk):
             current = stream.tell()
             expected = self.data_start + self.header.chunk_size
             try:
-                assert current == expected, f"CHUNK READ MISMATCH CURRENTLY @{current}, EXPECTED @{expected}, {self.header.type}, D:{current-expected}"
+                assert current == expected, f"CHUNK READ MISMATCH CURRENTLY @{current}, EXPECTED @{expected}, {self.header.type}, D:{current - expected}"
             except AssertionError as error:
                 raise ParsingError(current) from error
                 # print(f"This chunk may be corrupted; or my format is improper:\t\t{e}")
@@ -28,4 +28,3 @@ class SparseChunk(BaseChunk):
         result.header = self.header
         stream.seek(prev_pos)
         return result
-

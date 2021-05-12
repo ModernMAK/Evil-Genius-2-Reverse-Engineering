@@ -71,7 +71,7 @@ class HTextChunk(BaseChunk):
         if not isinstance(other, HTextChunk):
             return False
 
-        if not (self.key == other.key and self.word_a == other.word_a and self.data_byte_length == other.data_byte_length and self.language == other.language and self.size == other.size):
+        if not (self.header == other.header and self.key == other.key and self.word_a == other.word_a and self.data_byte_length == other.data_byte_length and self.language == other.language and self.size == other.size):
             return False
         for part, other_part in zip(self.parts, other.parts):
             if part != other_part:

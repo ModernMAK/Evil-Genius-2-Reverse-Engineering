@@ -10,24 +10,26 @@ from asura.common.factories.chunk_parser import ChunkReader
 
 
 @dataclass
-class FontInfoChunk(BaseChunk):
+class FnfoChunk(BaseChunk):
     reserved: bytes = None
     data: bytes = None
 
     def __eq__(self, other):
-        if not isinstance(other, FontInfoChunk):
+        if not isinstance(other, FnfoChunk):
             return False
 
-        return self.reserved == other.reserved and \
+        return self.header == other.header and \
+            self.reserved == other.reserved and \
             self.data == other.data
+
 
     @staticmethod
     @ChunkReader.register(ChunkType.FONT_INFO)
-    def read(stream: BinaryIO, header: ChunkHeader = None) -> 'FontInfoChunk':
+    def read(stream: BinaryIO, header: ChunkHeader = None) -> 'FnfoChunk':
         with AsuraIO(stream) as reader:
             reserved = reader.read_word()
             data = reader.read_word()
-            return FontInfoChunk(header, reserved, data)
+            return FnfoChunk(header, reserved, data)
 
     def write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
@@ -45,9 +47,9 @@ class FontInfoChunk(BaseChunk):
 
     @staticmethod
     @ChunkRepacker.register(ChunkType.FONT_INFO)
-    def repack(chunk_path: str) -> 'FontInfoChunk':
+    def repack(chunk_path: str) -> 'FnfoChunk':
         meta, data = PackIO.read_meta_and_bytes(chunk_path, ext=PackIO.CHUNK_INFO_EXT)
 
         header = ChunkHeader.repack_from_dict(meta['header'])
         del meta['header']
-        return FontInfoChunk(header, data=data, **meta)
+        return FnfoChunk(header, data=data, **meta)

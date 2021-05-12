@@ -43,7 +43,7 @@ class HsndChunk(BaseChunk):
         if not isinstance(other, HsndChunk):
             return False
 
-        if self.name != other.name or self.size != other.size:
+        if self.header != other.header or self.name != other.name or self.size != other.size:
             return False
 
         for block, other_block in zip(self.data, other.data):
@@ -64,7 +64,7 @@ class HsndChunk(BaseChunk):
     def write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
-                writer.write_int32(self.size())
+                writer.write_int32(self.size)
                 writer.write_utf8(self.name, padded=True)
                 for block in self.data:
                     block.write(stream)

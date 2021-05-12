@@ -56,13 +56,12 @@ class ResourceListChunk(BaseChunk):
     def __eq__(self, other):
         if not isinstance(other, ResourceListChunk):
             return False
-        if self.size != other.size:
+        if self.header != other.header or self.size != other.size:
             return False
         for desc, other_desc in zip(self.descriptions,other.descriptions):
             if desc != other_desc:
                 return False
         return True
-
 
     @staticmethod
     @ChunkReader.register(ChunkType.RESOURCE_LIST)

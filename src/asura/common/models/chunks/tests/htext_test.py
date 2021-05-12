@@ -1,8 +1,7 @@
-from io import BytesIO
-from typing import BinaryIO, Union
-
 from asura.common.enums import LangCode
 from asura.common.models.chunks.formats import HString, HTextChunk
+from asura.common.models.chunks.tests.helper import assert_read, assert_write, assert_read_write_reversable, \
+    assert_write_read_reversable
 
 LITTLE = "little"
 
@@ -49,10 +48,20 @@ htext_chunk = HTextChunk(
 
 
 
-def test_chunk_read():
-    with BytesIO(htext_chunk_raw) as reader:
-        chunk = HTextChunk.read(reader)
-        assert chunk == htext_chunk
+def test_read():
+    assert_read(htext_chunk, htext_chunk_raw, HTextChunk.read)
+
+
+def test_write():
+    assert_write(htext_chunk, htext_chunk_raw)
+
+
+def test_read_reversable():
+    assert_read_write_reversable(htext_chunk_raw, HTextChunk.read)
+
+
+def test_write_reversable():
+    assert_write_read_reversable(htext_chunk, HTextChunk.read)
 
 # def test_chunk_read_writeback():
 #     with BytesIO(htext_chunk_raw) as reader:

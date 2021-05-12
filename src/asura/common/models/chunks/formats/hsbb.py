@@ -44,7 +44,7 @@ class HsbbChunk(BaseChunk):
     def __eq__(self, other):
         if not isinstance(other, HsbbChunk):
             return False
-        if self.name != other.name or self.size != other.size:
+        if self.header != other.header or self.name != other.name or self.size != other.size:
             return False
         for desc, other_desc in zip(self.descriptions, other.descriptions):
             if desc != other_desc:

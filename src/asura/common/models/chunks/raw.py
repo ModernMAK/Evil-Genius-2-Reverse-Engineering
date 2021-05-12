@@ -10,6 +10,10 @@ from asura.common.factories import ChunkUnpacker, ChunkRepacker, ChunkReader
 class RawChunk(BaseChunk):
     data: bytes = None
 
+    def __eq__(self, other):
+        if not isinstance(other, RawChunk):
+            return False
+        return self.header == other.header and self.data == other.data
     @property
     def size(self):
         return len(self.data)

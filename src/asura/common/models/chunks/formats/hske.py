@@ -15,7 +15,7 @@ class HskeChunk(BaseChunk):
     def __eq__(self, other):
         if not isinstance(other, HskeChunk):
             return False
-        return self.word == other.word
+        return self.header == other.header and self.word == other.word
 
     @staticmethod
     @ChunkReader.register(ChunkType.HSKE)

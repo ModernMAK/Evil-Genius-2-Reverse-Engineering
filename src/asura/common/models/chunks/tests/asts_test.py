@@ -1,7 +1,6 @@
-from io import BytesIO
-from typing import BinaryIO, Union
-
 from asura.common.models.chunks.formats import SoundChunk, SoundClip
+from asura.common.models.chunks.tests.helper import assert_read_write_reversable, assert_write_read_reversable, \
+    assert_write, assert_read
 
 LITTLE = "little"
 
@@ -33,62 +32,17 @@ sound = SoundChunk(
 )
 
 
-def test_asts_read():
-    with BytesIO(sound_raw) as reader:
-        chunk = SoundChunk.read(reader)
-        assert chunk == sound
+def test_read():
+    assert_read(sound, sound_raw, SoundChunk.read)
 
 
-def test_asts_read_reversable():
-    with BytesIO(sound_raw) as reader:
-        chunk = SoundChunk.read(reader)
-
-    with BytesIO() as writer:
-        chunk.write(writer)
-        writer.seek(0)
-        reconstructed = SoundChunk.read(writer)
-        assert chunk == reconstructed
+def test_write():
+    assert_write(sound, sound_raw)
 
 
-def test_asts_write_reversable():
-    with BytesIO() as writer:
-        sound.write(writer)
-        writer.seek(0)
-        reconstructed = SoundChunk.read(writer)
-        with BytesIO() as rewriter:
-            reconstructed.write(rewriter)
-            writer.seek(0)
-            rewriter.seek(0)
-            source, rebuilt = writer.read(), rewriter.read()
-            assert source == rebuilt
+def test_read_reversable():
+    assert_read_write_reversable(sound_raw, SoundChunk.read)
 
-#
-# def test_chunk_write_readback():
-#     with BytesIO() as writer:
-#         sound.write(writer)
-#         writer.seek(0)
-#         value = SoundChunk.read(writer)
-#         assert_sound_chunk(value, sound)
-#
-#
-# def test_clip_read_writeback():
-#     with BytesIO(clip_raw) as reader:
-#         chunk = SoundClip.read_meta(reader)
-#         chunk.read_data(reader)
-#
-#     with BytesIO() as writer:
-#         chunk.write_meta(writer)
-#         chunk.write_data(writer)
-#         assert_bytes(writer, clip_raw)
-#
-#
-# def test_clip_write_readback():
-#     with BytesIO() as writer:
-#         clip.write_meta(writer)
-#         clip.write_data(writer)
-#
-#         writer.seek(0)
-#         chunk = SoundClip.read_meta(writer)
-#         chunk.read_data(writer)
-#
-#     assert_sound_clip(clip, clip)
+
+def test_write_reversable():
+    assert_write_read_reversable(sound, SoundChunk.read)

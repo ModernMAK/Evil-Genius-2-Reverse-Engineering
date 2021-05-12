@@ -9,6 +9,11 @@ from asura.common.factories import ChunkUnpacker, ChunkRepacker,  ChunkReader
 
 
 class EofChunk(BaseChunk):
+    def __eq__(self, other):
+        if not isinstance(other,EofChunk):
+            return False
+        return self.header == other.header
+
     @staticmethod
     @ChunkReader.register(ChunkType.EOF)
     def read(steam: BinaryIO, header: ChunkHeader) -> 'EofChunk':
