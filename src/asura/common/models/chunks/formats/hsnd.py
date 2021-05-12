@@ -13,6 +13,11 @@ class HsndBlock:
     BLOCK_SIZE = 16 * 4
     data: bytes = None
 
+    def __eq__(self, other):
+        if not isinstance(other, HsndBlock):
+            return False
+        return self.data == other.data
+
     @staticmethod
     def read(stream: BinaryIO) -> 'HsndBlock':
         data = stream.read(HsndBlock.BLOCK_SIZE)
@@ -24,13 +29,27 @@ class HsndBlock:
                 writer.safe_write(self.data, self.BLOCK_SIZE)
             return counter.length
 
+
 @dataclass
 class HsndChunk(BaseChunk):
     name: str = None
     data: List[HsndBlock] = None
 
+    @property
     def size(self):
         return len(self.data)
+
+    def __eq__(self, other):
+        if not isinstance(other, HsndChunk):
+            return False
+
+        if self.name != other.name or self.size != other.size:
+            return False
+
+        for block, other_block in zip(self.data, other.data):
+            if block != other_block:
+                return False
+        return True
 
     @staticmethod
     @ChunkReader.register(ChunkType.HSND)

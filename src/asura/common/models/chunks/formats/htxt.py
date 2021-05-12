@@ -24,6 +24,15 @@ class HString:
     def size(self) -> int:
         return len(self.raw_text)
 
+    def __eq__(self, other):
+        if not isinstance(other, HString):
+            return False
+
+        return self.key == other.key and \
+               self.unknown == other.unknown and \
+               self.size == other.size and \
+               self.raw_text == other.raw_text
+
     @classmethod
     def read(cls, stream: BinaryIO) -> 'HString':
         with AsuraIO(stream) as reader:
@@ -42,9 +51,9 @@ class HString:
 
 CURRENT_HTEXT_VERSION = 4
 
+
 @dataclass
 class HTextChunk(BaseChunk):
-
     key: str = None
     parts: List[HString] = None
     word_a: bytes = None
@@ -57,6 +66,17 @@ class HTextChunk(BaseChunk):
     @property
     def size(self):
         return len(self.parts)
+
+    def __eq__(self, other):
+        if not isinstance(other, HTextChunk):
+            return False
+
+        if not (self.key == other.key and self.word_a == other.word_a and self.data_byte_length == other.data_byte_length and self.language == other.language and self.size == other.size):
+            return False
+        for part, other_part in zip(self.parts, other.parts):
+            if part != other_part:
+                return False
+            return True
 
     @staticmethod
     @ChunkReader.register(ChunkType.H_TEXT)
@@ -111,7 +131,7 @@ class HTextChunk(BaseChunk):
     @ChunkRepacker.register(ChunkType.H_TEXT)
     def repack(chunk_path: str) -> 'HTextChunk':
         meta, data = PackIO.read_meta_and_json(chunk_path, ext=PackIO.CHUNK_INFO_EXT)
-        parts = [HTextField(**d) for d in data]
+        parts = [HString(**d) for d in data]
 
         header = ChunkHeader.repack_from_dict(meta['header'])
         del meta['header']

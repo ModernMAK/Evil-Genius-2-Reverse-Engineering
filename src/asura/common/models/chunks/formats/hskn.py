@@ -19,6 +19,17 @@ class HsknBlockHeader:
     f: int = None
     g: int = None
 
+    def __eq__(self, other):
+        if not isinstance(other, HsknBlockHeader):
+            return False
+        return self.a == other.a and \
+            self.b == other.b and \
+            self.c == other.c and \
+            self.d == other.d and \
+            self.e == other.e and \
+            self.f == other.f and \
+            self.g == other.g
+
     @staticmethod
     def read(stream: BinaryIO) -> 'HsknBlockHeader':
         cls = HsknBlockHeader
@@ -48,6 +59,8 @@ class HsknBlock:
     @property
     def size(self) -> int:
         return self.__size if self.data is None else len(self.data)
+
+
 
     @staticmethod
     def read_word_a(stream: BinaryIO) -> 'HsknBlock':

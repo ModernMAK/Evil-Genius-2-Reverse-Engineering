@@ -16,6 +16,16 @@ class ResourceDescription:
     reserved_b: int = None
     reserved_c:  int = None
 
+    def __eq__(self, other):
+        if not isinstance(other, ResourceDescription):
+            return False
+        return self.name == other.name and \
+            self.reserved_a == other.reserved_a and \
+            self.reserved_b == other.reserved_b and \
+            self.reserved_c == other.reserved_c
+
+
+
     @staticmethod
     def read(stream: BinaryIO) -> 'ResourceDescription':
         with AsuraIO(stream) as reader:
@@ -42,6 +52,17 @@ class ResourceListChunk(BaseChunk):
     @property
     def size(self):
         return len(self.descriptions)
+
+    def __eq__(self, other):
+        if not isinstance(other, ResourceListChunk):
+            return False
+        if self.size != other.size:
+            return False
+        for desc, other_desc in zip(self.descriptions,other.descriptions):
+            if desc != other_desc:
+                return False
+        return True
+
 
     @staticmethod
     @ChunkReader.register(ChunkType.RESOURCE_LIST)

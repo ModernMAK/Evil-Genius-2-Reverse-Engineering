@@ -102,7 +102,7 @@ class SoundChunk(BaseChunk):
 
         if self.header != other.header or \
                 self.is_sparse != other.is_sparse or\
-                len(self.clips) != len(other.clips):
+                self.size != other.size:
             return False
 
         for clip, other_clip in zip(self.clips, other.clips):

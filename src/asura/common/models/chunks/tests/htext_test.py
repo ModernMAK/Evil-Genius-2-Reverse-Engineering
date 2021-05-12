@@ -47,71 +47,44 @@ htext_chunk = HTextChunk(
     language=LangCode.ENGLISH)
 
 
-def assert_bytes(value: Union[bytes, BinaryIO], expected: bytes):
-    if isinstance(value, BinaryIO):
-        value.seek(0)
-        value = value.read()
-    for (a, b) in zip(value, expected):
-        assert a == b
-
-
-def assert_htext(value: HString, expected: HString):
-    assert value.size == expected.size
-    assert value.key == expected.key
-    assert value.raw_text == expected.raw_text
-    assert value.unknown == expected.unknown
-
-
-def assert_htext_chunk(value: HTextChunk, expected: HTextChunk):
-    assert value.key == expected.key
-    assert value.word_a == expected.word_a
-    assert value.language == expected.language
-    assert value.data_byte_length == expected.data_byte_length
-    assert value.size == expected.size
-    for v, e in zip(value.parts, expected.parts):
-        assert_htext(v, e)
 
 
 def test_chunk_read():
     with BytesIO(htext_chunk_raw) as reader:
         chunk = HTextChunk.read(reader)
-        assert_htext_chunk(chunk, htext_chunk)
+        assert chunk == htext_chunk
 
-    for v, e in zip(chunk.parts, htext_chunk.parts):
-        assert_htext(v, e)
-
-
-def test_chunk_read_writeback():
-    with BytesIO(htext_chunk_raw) as reader:
-        chunk = HTextChunk.read(reader)
-
-    with BytesIO() as writer:
-        chunk.write(writer)
-        assert_bytes(writer, htext_chunk_raw)
+# def test_chunk_read_writeback():
+#     with BytesIO(htext_chunk_raw) as reader:
+#         chunk = HTextChunk.read(reader)
+#
+#     with BytesIO() as writer:
+#         chunk.write(writer)
+#         assert_bytes(writer, htext_chunk_raw)
 
 
-def test_chunk_write_readback():
-    with BytesIO() as writer:
-        htext_chunk.write(writer)
-        writer.seek(0)
-        value = HTextChunk.read(writer)
-        assert_htext_chunk(value, htext_chunk)
+# def test_chunk_write_readback():
+#     with BytesIO() as writer:
+#         htext_chunk.write(writer)
+#         writer.seek(0)
+#         value = HTextChunk.read(writer)
+#         assert_htext_chunk(value, htext_chunk)
 
 
-def test_clip_read_writeback():
-    with BytesIO(htext_raw) as reader:
-        part = HString.read(reader)
+# def test_clip_read_writeback():
+#     with BytesIO(htext_raw) as reader:
+#         part = HString.read(reader)
+#
+#     with BytesIO() as writer:
+#         part.write(writer)
+#         assert_bytes(writer, htext_raw)
 
-    with BytesIO() as writer:
-        part.write(writer)
-        assert_bytes(writer, htext_raw)
 
-
-def test_clip_write_readback():
-    with BytesIO() as writer:
-        htext_from_raw.write(writer)
-
-        writer.seek(0)
-        read = HString.read(writer)
-
-    assert_htext(read, htext_from_raw)
+# def test_clip_write_readback():
+#     with BytesIO() as writer:
+#         htext_from_raw.write(writer)
+#
+#         writer.seek(0)
+#         read = HString.read(writer)
+#
+#     assert_htext(read, htext_from_raw)

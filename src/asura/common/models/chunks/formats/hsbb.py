@@ -12,6 +12,11 @@ class HsbbDesc:
     data: bytes = None
     one: int = None
 
+    def __eq__(self, other):
+        if not isinstance(other, HsbbDesc):
+            return False
+        return self.data == other.data and self.one == other.one
+
     @staticmethod
     def read(stream: BinaryIO):
         with AsuraIO(stream) as reader:
@@ -35,6 +40,16 @@ class HsbbChunk(BaseChunk):
     @property
     def size(self):
         return len(self.descriptions)
+
+    def __eq__(self, other):
+        if not isinstance(other, HsbbChunk):
+            return False
+        if self.name != other.name or self.size != other.size:
+            return False
+        for desc, other_desc in zip(self.descriptions, other.descriptions):
+            if desc != other_desc:
+                return False
+        return True
 
     @staticmethod
     @ChunkReader.register(ChunkType.HSBB)

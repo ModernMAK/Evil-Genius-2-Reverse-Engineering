@@ -12,6 +12,11 @@ from asura.common.factories.chunk_parser import ChunkReader
 class HskeChunk(BaseChunk):
     word: bytes = None
 
+    def __eq__(self, other):
+        if not isinstance(other, HskeChunk):
+            return False
+        return self.word == other.word
+
     @staticmethod
     @ChunkReader.register(ChunkType.HSKE)
     def read(stream: BinaryIO, header: ChunkHeader = None):
