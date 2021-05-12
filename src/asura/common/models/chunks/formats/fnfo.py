@@ -14,6 +14,13 @@ class FontInfoChunk(BaseChunk):
     reserved: bytes = None
     data: bytes = None
 
+    def __eq__(self, other):
+        if not isinstance(other, FontInfoChunk):
+            return False
+
+        return self.reserved == other.reserved and \
+            self.data == other.data
+
     @staticmethod
     @ChunkReader.register(ChunkType.FONT_INFO)
     def read(stream: BinaryIO, header: ChunkHeader = None) -> 'FontInfoChunk':

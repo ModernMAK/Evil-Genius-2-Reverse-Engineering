@@ -29,6 +29,16 @@ class SoundClip:
     def size(self) -> int:
         return self._size_from_meta if self.is_sparse else len(self.data)
 
+    def __eq__(self, other):
+        if not isinstance(other, SoundClip):
+            return False
+
+        return self.name == other.name and \
+               self.reserved_b == other.reserved_b and \
+               self.data == other.data and \
+               self.size == other.size and \
+               self.is_sparse == other.is_sparse
+
     @classmethod
     def read_meta(cls, stream: BinaryIO) -> 'SoundClip':
         with AsuraIO(stream) as reader:
@@ -40,7 +50,8 @@ class SoundClip:
         return SoundClip(name, word, None, size, is_sparse)
 
     def read_data(self, stream: BinaryIO):
-        self.data = stream.read(self._size_from_meta)
+        if not self._is_sparse_from_meta:
+            self.data = stream.read(self._size_from_meta)
 
     def write_meta(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
@@ -84,6 +95,21 @@ class SoundChunk(BaseChunk):
     @property
     def size(self):
         return len(self.clips)
+
+    def __eq__(self, other):
+        if not isinstance(other, SoundChunk):
+            return False
+
+        if self.header != other.header or \
+                self.is_sparse != other.is_sparse or\
+                len(self.clips) != len(other.clips):
+            return False
+
+        for clip, other_clip in zip(self.clips, other.clips):
+            if clip != other_clip:
+                return False
+
+        return True
 
     @staticmethod
     @ChunkReader.register(ChunkType.SOUND)

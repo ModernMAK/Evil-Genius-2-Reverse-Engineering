@@ -14,6 +14,14 @@ class ChunkHeader:
     version: int = None
     reserved: bytes = None
 
+    def __eq__(self, other):
+        if not isinstance(other, ChunkHeader):
+            return False
+        return self.type == other.type and \
+            self.length == other.length and \
+            self.version == other.version and \
+            self.reserved == other.reserved
+
     @property
     def chunk_size(self) -> int:
         # Chunk type, length, version, reserved are each 4 bytes, so offset by 16
