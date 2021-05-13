@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
 from os.path import join, basename
-from typing import BinaryIO, Tuple
+from typing import BinaryIO, Tuple, List
 
 from asura.common.enums import ChunkType
 from asura.common.enums.common import enum_value_to_enum
@@ -75,7 +75,7 @@ class ResourceType(Enum):
     SOUND = (3, 0)
 
     @property
-    def primary (self):
+    def primary(self):
         p, _ = self.value
         return p
 
@@ -93,7 +93,7 @@ class ResourceType(Enum):
             return b.read()
 
     @classmethod
-    def get_enum_from_value(cls, value: Tuple[int,int]) -> 'ResourceType':
+    def get_enum_from_value(cls, value: Tuple[int, int]) -> 'ResourceType':
         try:
             return enum_value_to_enum(value, ResourceType)
         except KeyError:
@@ -120,6 +120,8 @@ class ResourceType(Enum):
         return self.name
 
 
+
+
 @dataclass
 class ResourceChunk(BaseChunk):
     type: ResourceType = None
@@ -128,6 +130,7 @@ class ResourceChunk(BaseChunk):
 
     # If file_id_maybe = 0:
     data: bytes = None
+    mesh: bytes = None
 
     @property
     def size(self):
@@ -139,6 +142,7 @@ class ResourceChunk(BaseChunk):
     @staticmethod
     @ChunkReader.register(ChunkType.RESOURCE)
     def read(stream: BinaryIO, header: ChunkHeader):
+        mesh = None
         with AsuraIO(stream) as reader:
             with reader.byte_counter() as read:
                 type = ResourceType.read(stream)
@@ -146,10 +150,12 @@ class ResourceChunk(BaseChunk):
                 name = reader.read_utf8(padded=True)
                 if type == ResourceType.MESH:
                     data = reader.read(size)
+                    with BytesIO(data) as b:
+                        mesh = MeshResource.read(b)
                 else:
                     data = reader.read(size)
             assert read.length == header.chunk_size, (read.length, header.length)
-        return ResourceChunk(header, type, name, size, data)
+        return ResourceChunk(header, type, name, size, data, mesh)
 
     def _write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
@@ -184,6 +190,61 @@ class ResourceChunk(BaseChunk):
         header = ChunkHeader.repack_from_dict(meta['header'])
         del meta['header']
         return ResourceChunk(header, data=data, **meta)
+
+
+@dataclass
+class MeshResource:
+    @dataclass
+    class Material:
+        a: int = None
+        b: int = None
+        c: int = None
+        d: int = None
+        zero: int = None
+        one: int = None
+
+        e: bytes = None
+
+        @classmethod
+        def start_read(cls, stream: BinaryIO) -> 'MeshResource.Material':
+            with AsuraIO(stream) as reader:
+                args = [reader.read_int32() for _ in range(6)]
+                return MeshResource.Material(*args)
+
+        def finish_read(self, stream: BinaryIO):
+            with AsuraIO(stream) as reader:
+                self.e = reader.read(8)
+
+        @classmethod
+        def batch_finish_read(cls, mats: List['MeshResource.Material'], stream: BinaryIO):
+            for mat in mats:
+                mat.finish_read(stream)
+
+    material_count: int = None
+    vertex_count: int = None
+    index_count: int = None
+    triangle_count: int = None
+    materials: List['MeshResource.Material'] = None
+    vertexes: List[bytes] = None
+    indexes: List[int] = None
+
+    VERTEX_SIZE = 48
+    INDEX_SIZE = 2
+
+    @classmethod
+    def read(cls, stream: BinaryIO) -> 'MeshResource':
+        mr = MeshResource()
+        with AsuraIO(stream) as reader:
+            mr.material_count = reader.read_int32()
+            mr.vertex_count = reader.read_int32()
+            mr.index_count = reader.read_int32()
+            mr.triangle_count = reader.read_int32()
+            mr.materials = [MeshResource.Material.start_read(stream) for _ in range(mr.material_count)]
+            MeshResource.Material.batch_finish_read(mr.materials, stream)
+            mr.vertexes = [reader.read(cls.VERTEX_SIZE) for _ in range(mr.vertex_count)]
+            mr.indexes = [reader.read_int16(signed=False) for _ in range(mr.index_count)]
+            return mr
+
 # EXAMINING Chunk 9034.rscf of furniture_content.asr
 # 0x03      ~ 3
 # 0x480     ~ 1152 ~ V Count
@@ -228,7 +289,6 @@ class ResourceChunk(BaseChunk):
 #   5994 / 2703 ~ 2.21
 
 
-
 # Vertex buffer is probably 48 bytes
 #   55296 bytes for vertex buffer
 # Index buffer is probably 2 bytes
@@ -262,7 +322,3 @@ class ResourceChunk(BaseChunk):
 #               Could try looking at the binaries (data blocks) to see if anything looks suspiciously like shaders
 #                   Doubt it would have 'magic' words though.
 #                       Maybe a chunk has the shader info? it would only be read once, so my guess would be main!
-
-
-
-
