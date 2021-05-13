@@ -31,7 +31,7 @@ class FnfoChunk(BaseChunk):
             data = reader.read_word()
             return FnfoChunk(header, reserved, data)
 
-    def write(self, stream: BinaryIO) -> int:
+    def _write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
                 writer.write_word(self.reserved)

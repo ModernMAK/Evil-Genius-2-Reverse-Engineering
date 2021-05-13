@@ -124,7 +124,7 @@ class SoundChunk(BaseChunk):
 
         return SoundChunk(header, is_sparse, clips)
 
-    def write(self, stream: BinaryIO) -> int:
+    def _write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
                 writer.write_int32(self.size)

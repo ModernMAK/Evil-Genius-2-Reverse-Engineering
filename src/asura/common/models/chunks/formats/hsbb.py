@@ -60,7 +60,7 @@ class HsbbChunk(BaseChunk):
             descriptions = [HsbbDesc.read(stream) for _ in range(size)]
         return HsbbChunk(header, name, descriptions)
 
-    def write(self, stream: BinaryIO) -> int:
+    def _write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
                 writer.write_utf8(self.name, padded=True)

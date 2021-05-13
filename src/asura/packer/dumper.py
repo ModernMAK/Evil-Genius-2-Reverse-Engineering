@@ -12,6 +12,9 @@ from asura.common.models.chunks import BaseChunk
 from asura.common.factories import ChunkUnpacker, ArchiveParser, initialize_factories
 
 # The default root
+from asura.common.models.chunks.formats import ResourceChunk
+from asura.common.models.chunks.formats.rscf import ResourceType
+
 DEFAULT_ROOT_DIR = "dump"
 # The path relative to root, containing cached decompressed archives
 DECOMPRESSED_DIR = "decompressed"
@@ -57,6 +60,8 @@ class DumpOptions:
     overwrite_chunks: bool = False
     strict_archive: bool = False
 
+    write_header: bool = True
+
     def get_print_str_parts(self) -> List[str]:
         def list_opts(n, l: List):
             if l is None:
@@ -98,9 +103,12 @@ def dump_chunk(chunk: BaseChunk, chunk_name: str, options: DumpOptions = None) -
     safe_name = f"{chunk_name}.{safe_value}"
     chunk_path = options.create_path(safe_name)
     print(f"\t\t\t{chunk_path}")
+    if isinstance(chunk,ResourceChunk) and chunk.type.primary == 0x0:
+        print(f"\t\t\t\t{repr(chunk.type)}")
+
     PackIO.make_parent_dirs(chunk_path)
     with open(chunk_path, mode="wb") as file:
-        chunk.write(file)
+        chunk.write(file, include_header=options.write_header, update_header_size=True)
     return True
 
 

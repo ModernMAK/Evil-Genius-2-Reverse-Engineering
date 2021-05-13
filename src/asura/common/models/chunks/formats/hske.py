@@ -24,7 +24,7 @@ class HskeChunk(BaseChunk):
             word = reader.read_word()
         return HskeChunk(header, word)
 
-    def write(self, stream: BinaryIO) -> int:
+    def _write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
                 writer.write_word(self.word)

@@ -27,7 +27,7 @@ class RawChunk(BaseChunk):
         data = file.read(header.chunk_size)
         return RawChunk(header, data)
 
-    def write(self, file: BinaryIO) -> int:
+    def _write(self, file: BinaryIO) -> int:
         return file.write(self.data)
 
     @ChunkUnpacker.register()

@@ -61,7 +61,7 @@ class HsndChunk(BaseChunk):
             data = [HsndBlock.read(stream) for _ in range(size)]
         return HsndChunk(header, name, data)
 
-    def write(self, stream: BinaryIO) -> int:
+    def _write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
                 writer.write_int32(self.size)

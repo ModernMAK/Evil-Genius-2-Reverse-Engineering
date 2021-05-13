@@ -14,17 +14,15 @@ class ResourceDescription:
     name: str = None
     reserved_a: int = None
     reserved_b: int = None
-    reserved_c:  int = None
+    reserved_c: int = None
 
     def __eq__(self, other):
         if not isinstance(other, ResourceDescription):
             return False
         return self.name == other.name and \
-            self.reserved_a == other.reserved_a and \
-            self.reserved_b == other.reserved_b and \
-            self.reserved_c == other.reserved_c
-
-
+               self.reserved_a == other.reserved_a and \
+               self.reserved_b == other.reserved_b and \
+               self.reserved_c == other.reserved_c
 
     @staticmethod
     def read(stream: BinaryIO) -> 'ResourceDescription':
@@ -58,7 +56,7 @@ class ResourceListChunk(BaseChunk):
             return False
         if self.header != other.header or self.size != other.size:
             return False
-        for desc, other_desc in zip(self.descriptions,other.descriptions):
+        for desc, other_desc in zip(self.descriptions, other.descriptions):
             if desc != other_desc:
                 return False
         return True
@@ -71,7 +69,7 @@ class ResourceListChunk(BaseChunk):
             descriptions = [ResourceDescription.read(stream) for _ in range(size)]
         return ResourceListChunk(header, descriptions)
 
-    def write(self, stream: BinaryIO) -> int:
+    def _write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
                 writer.write_int32(self.size)

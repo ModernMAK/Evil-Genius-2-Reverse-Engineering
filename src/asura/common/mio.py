@@ -1,5 +1,6 @@
 import dataclasses
 import json
+import struct
 import zlib
 from contextlib import contextmanager
 from enum import Enum
@@ -7,7 +8,8 @@ from os import stat, walk, makedirs
 from os.path import join, splitext, dirname, exists, abspath
 from typing import List, BinaryIO, Iterable, Dict, Tuple
 
-from asura.common.config import MEBI_BYTE, INT64_SIZE, INT32_SIZE, INT16_SIZE, WORD_SIZE
+from asura.common.config import MEBI_BYTE, INT64_SIZE, INT32_SIZE, INT16_SIZE, WORD_SIZE, INT8_SIZE, FLOAT64_SIZE, \
+    FLOAT32_SIZE, FLOAT16_SIZE
 from asura.common.enums.chunk_type import GenericChunkType
 from asura.common.error import ParsingError
 
@@ -48,6 +50,7 @@ class ZLibIO:
     BLOCKSIZE_4096 = 12
     BLOCK_7 = BLOCKSIZE_32768
     BLOCK_4 = BLOCKSIZE_4096
+
     # Chunk
     def __init__(self, stream: BinaryIO, block_size: int = 2 * MEBI_BYTE):
         self.stream = stream
@@ -220,34 +223,86 @@ class AsuraIO:
         assert len(value) == size
         return self.stream.write(value)
 
-    def read_int64(self, signed: bool = None) -> int:
-        b = self.stream.read(INT64_SIZE)
-        return int.from_bytes(b, self.byte_order, signed=signed)
-
-    def write_int64(self, value: int, signed: bool = None) -> int:
-        b = int.to_bytes(value, INT64_SIZE, self.byte_order, signed=signed)
-        return self.stream.write(b)
-
     @staticmethod
     def swap_endian_int32(value: int, signed: bool = None) -> int:
         b = int.to_bytes(value, INT32_SIZE, "little", signed=signed)
         return int.from_bytes(b, "big", signed=signed)
 
+    def _read_int(self, size: int, signed: bool = None, order: str = None) -> int:
+        b = self.stream.read(size)
+        return int.from_bytes(b, order or self.byte_order, signed=signed)
+
+    def _write_int(self, value, size: int, signed: bool = None, order: str = None) -> int:
+        b = int.to_bytes(value, size, order or self.byte_order, signed=signed)
+        return self.stream.write(b)
+
+    @staticmethod
+    def _get_float_size_char(size: int) -> str:
+        lookup = {2: 'e', 4: 'f', 8: 'd'}
+        try:
+            return lookup[size]
+        except KeyError as e:
+            raise ValueError(f"'{size}' is not a supported float type!") from e
+
+    @staticmethod
+    def _get_order_char(order: str = None) -> str:
+        lookup = {'little': "<", "big": ">", None: "@"}
+        return lookup.get(order)
+
+    def _read_float(self, size: int, order: str = None) -> float:
+        b = self.stream.read(size)
+        order_char = self._get_order_char(order or self.byte_order)
+        size_char = self._get_float_size_char(size)
+        (f, ) = struct.unpack(f"{order_char}{size_char}", b)
+        return f
+
+    def _write_float(self, value, size: int, order: str = None) -> int:
+        order_char = self._get_order_char(order or self.byte_order)
+        size_char = self._get_float_size_char(size)
+        b = struct.pack(f"{order_char}{size_char}", value)
+        return self.stream.write(b)
+
+    def read_int64(self, signed: bool = None) -> int:
+        return self._read_int(INT64_SIZE, signed=signed)
+
+    def write_int64(self, value: int, signed: bool = None) -> int:
+        return self._write_int(value, INT64_SIZE, signed=signed)
+
     def read_int32(self, signed: bool = None) -> int:
-        b = self.stream.read(INT32_SIZE)
-        return int.from_bytes(b, self.byte_order, signed=signed)
+        return self._read_int(INT32_SIZE, signed=signed)
 
     def write_int32(self, value: int, signed: bool = None) -> int:
-        b = int.to_bytes(value, INT32_SIZE, self.byte_order, signed=signed)
-        return self.stream.write(b)
+        return self._write_int(value, INT32_SIZE, signed=signed)
 
     def read_int16(self, signed: bool = None) -> int:
-        b = self.stream.read(INT16_SIZE)
-        return int.from_bytes(b, self.byte_order, signed=signed)
+        return self._read_int(INT16_SIZE, signed=signed)
 
     def write_int16(self, value: int, signed: bool = None) -> int:
-        b = int.to_bytes(value, INT16_SIZE, self.byte_order, signed=signed)
-        return self.stream.write(b)
+        return self._write_int(value, INT16_SIZE, signed=signed)
+
+    def read_int8(self, signed: bool = None) -> int:
+        return self._read_int(INT8_SIZE, signed=signed)
+
+    def write_int8(self, value: int, signed: bool = None) -> int:
+        return self._write_int(value, INT8_SIZE, signed=signed)
+
+    def read_float64(self) -> float:
+        return self._read_float(FLOAT64_SIZE)
+
+    def write_float64(self, value: int) -> int:
+        return self._write_float(value, FLOAT64_SIZE)
+
+    def read_float32(self) -> float:
+        return self._read_float(FLOAT32_SIZE)
+
+    def write_float32(self, value: int) -> int:
+        return self._write_float(value, FLOAT32_SIZE)
+
+    def read_float16(self) -> float:
+        return self._read_float(FLOAT16_SIZE)
+
+    def write_float16(self, value: int) -> int:
+        return self._write_float(value, FLOAT16_SIZE)
 
     def read_bool(self, strict: bool = True) -> bool:
         b = self.read_byte()

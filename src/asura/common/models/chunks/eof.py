@@ -19,7 +19,7 @@ class EofChunk(BaseChunk):
     def read(steam: BinaryIO, header: ChunkHeader) -> 'EofChunk':
         return EofChunk(header)
 
-    def write(self, file: BinaryIO) -> int:
+    def _write(self, file: BinaryIO) -> int:
         return file.write(ChunkType.EOF.encode())
 
     @ChunkUnpacker.register(ChunkType.EOF)

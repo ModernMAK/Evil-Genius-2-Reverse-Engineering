@@ -22,7 +22,9 @@ class GenericChunkType:
         return "GENERIC"
 
     def __eq__(self, other):
-        if isinstance(other,GenericChunkType):
+        if isinstance(other, GenericChunkType):
+            return self.value == other.value
+        elif isinstance(other, ChunkType):
             return self.value == other.value
         return False
 

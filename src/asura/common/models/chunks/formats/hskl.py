@@ -34,7 +34,7 @@ class HsklChunk(BaseChunk):
             word = reader.read_word()
         return HsklChunk(header, parent_name, child_name, zero, word)
 
-    def write(self, stream: BinaryIO) -> int:
+    def _write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
                 writer.write_utf8(self.parent_name, padded=True)

@@ -99,7 +99,7 @@ class HTextChunk(BaseChunk):
 
         return HTextChunk(header, key, parts, unknown_word, parts_size, language)
 
-    def write(self, stream: BinaryIO, header: ChunkHeader = None) -> int:
+    def _write(self, stream: BinaryIO, header: ChunkHeader = None) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
                 writer.write_int32(self.size)

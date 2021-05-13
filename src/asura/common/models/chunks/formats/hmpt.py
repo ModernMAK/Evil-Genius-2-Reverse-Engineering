@@ -47,7 +47,7 @@ class HmptChunk(BaseChunk):
             blocks = [HmptBlock.read(stream) for _ in range(size)]
         return HmptChunk(header, name, blocks)
 
-    def write(self, stream: BinaryIO) -> int:
+    def _write(self, stream: BinaryIO) -> int:
         with AsuraIO(stream) as writer:
             with writer.byte_counter() as written:
                 writer.write_int32(self.size)
