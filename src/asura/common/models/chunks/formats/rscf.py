@@ -2,82 +2,18 @@ from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
 from os.path import join, basename
-from typing import BinaryIO, List, Tuple
+from typing import BinaryIO, Tuple
 
 from asura.common.enums import ChunkType
 from asura.common.enums.common import enum_value_to_enum
-from asura.common.error import EnumDecodeError
-from asura.common.mio import AsuraIO, PackIO
-from asura.common.models.chunks import BaseChunk, ChunkHeader
 from asura.common.factories import ChunkUnpacker
 from asura.common.factories.chunk_packer import ChunkRepacker
 from asura.common.factories.chunk_parser import ChunkReader
-
-#
-# @dataclass
-# class ResourceBlob:
-#     a: int = None
-#     reserved_zero_a: int = None
-#     b: int = None
-#     reserved_zero_b: int = None
-#     reserved_one: int = None
-#     data: bytes = None
-#
-#     @staticmethod
-#     def read_meta(stream: BinaryIO) -> 'ResourceBlob':
-#         with AsuraIO(stream) as reader:
-#             a = reader.read_int32()
-#             zero_a = reader.read_int32()
-#             b = reader.read_int32()
-#             zero_b = reader.read_int32()
-#             one = reader.read_int32()
-#             return ResourceBlob(a, zero_a, b, zero_b, one)
-#
-#     def write_meta(self, stream: BinaryIO) -> int:
-#         with AsuraIO(stream) as writer:
-#             with writer.byte_counter() as counter:
-#                 writer.write_int32(self.reserved_zero_a)
-#                 writer.write_int32(self.a)
-#                 writer.write_int32(self.reserved_zero_b)
-#                 writer.write_int32(self.b)
-#                 writer.write_int32(self.reserved_zero_a)
-#             return counter.length
-#
-#
-# @dataclass
-# class Resource:
-#     count: int = None
-#     reserved_a: int = None
-#     reserved_b: int = None
-#     reserved_c: int = None
-#     blobs: List['ResourceBlob'] = None
-#
-#     @staticmethod
-#     def read(stream: BinaryIO) -> 'Resource':
-#         with AsuraIO(stream) as reader:
-#             count = reader.read_int32()
-#             a = reader.read_int32()
-#             b = reader.read_int32()
-#             c = reader.read_int32()
-#             bolbs = [ResourceBlob.read_meta(stream) for _ in range(count)]
-#             return Resource(count, a, b, c, bolbs)
-#
-
-# According to Trololp's version of the asurabma script @https://github.com/Trololp
-# 0-F Mesh
-# 2-0 Image
-# 3-0 Sound
-# This matches what I have discovered for DDS and Sound, so I believe it
-#   Since it seems complicated; I'll move it to an enum (and create a generic variant)
-# I believe MY mesh files are 0-1 instead of 0-F
-# RAW_FILE_ID = 0
-# RESOURCE_SUB_ID = 1
-# DDS_FILE = 2
-# DEBUG_FILE = 6
-# SOUND_FILE = 3
+from asura.common.mio import AsuraIO, PackIO
+from asura.common.models.chunks import BaseChunk, ChunkHeader
 
 
-@dataclass()
+@dataclass
 class GenericResourceType:
     primary: int = None
     secondary: int = None
@@ -210,24 +146,8 @@ class ResourceChunk(BaseChunk):
                 name = reader.read_utf8(padded=True)
                 if type == ResourceType.MESH:
                     data = reader.read(size)
-                    with BytesIO(data) as d:
-                        from asura.common.models.model_scripts import Model
-                        m = Model.read(d)
-                        assert read.length == header.chunk_size, (read.length, header.length)
-
-                # if id == RAW_FILE_ID and sub_id == RESOURCE_SUB_ID:
-                #     start = reader.stream.tell()
-                #     resource = Resource.read(stream)
-                #     left_size = size - (reader.stream.tell() - start)
-                #     data = reader.read(left_size)
-                #     # import magic
-                #     # print(magic.from_buffer(data), magic.from_buffer(data,True))
-                # elif id in [RAW_FILE_ID, DDS_FILE, DEBUG_FILE, SOUND_FILE]:
                 else:
                     data = reader.read(size)
-                    # resource = None
-                # else:
-                    # raise Exception
             assert read.length == header.chunk_size, (read.length, header.length)
         return ResourceChunk(header, type, name, size, data)
 
@@ -264,3 +184,85 @@ class ResourceChunk(BaseChunk):
         header = ChunkHeader.repack_from_dict(meta['header'])
         del meta['header']
         return ResourceChunk(header, data=data, **meta)
+# EXAMINING Chunk 9034.rscf of furniture_content.asr
+# 0x03      ~ 3
+# 0x480     ~ 1152 ~ V Count
+# 0x0baf    ~ 2991 ~ Index Count
+# 03e5      ~ 997 ~ Triangle Count?
+# 0x6a78f6ea ~ 1786312426 ~ BIG NUMBER
+# 0x00000000 ~ 0 ~ bool as word?
+# 0x0a8f ~ 2703
+# 0x00 ~ another zero
+# 0x01 ~ one?
+# 0x3e9c80fd ~ 1050444029
+# 0x3e9c80fd ~ 1050444029 (again)
+# 0x18 ~ 24
+# 0x00 ~ 0
+# 0x01 ~ another one
+
+
+# Mat Count
+# V Count
+# Index COunt
+# Triangle Count
+#   20 bytes per mat def
+# start at 0x84?
+# 24 bytes are still unacounted for
+# 8 bytes per mat count?
+
+# 0xd890 - 0x84  ~ 55440 - 132 ~ 55308
+#   55308 / 1152    ~ 48
+#   55308 / 2991    ~ 18.5
+#   55308 / 997     ~ 55.5
+#   55308 / 2703    ~ 20.5
+
+# 0xd890 - 0x44ish  ~ 55440 - 68 ~ 55372
+#   55372 / 1152    ~ 48
+#   55372 / 2991    ~ 18.5
+#   55372 / 997     ~ 55.5
+#   55372 / 2703    ~ 20.5
+# 0xeffa - 0xd890   ~ 61434 - 55440 ~ 5994
+#   5994 / 1152 ~ 5.2
+#   5994 / 2991 ~ 2.04
+#   5994 / 997 ~ 6
+#   5994 / 2703 ~ 2.21
+
+
+
+# Vertex buffer is probably 48 bytes
+#   55296 bytes for vertex buffer
+# Index buffer is probably 2 bytes
+#   5982 bytes for index buffer
+
+
+# From my guesstimates
+# Chunk Header: 0x0 - 0x10
+# Resource TYPE: 0x10 - 0x18
+# size: 0x18 - 0x1b
+# name: 0x1b - 0x38
+# ???:
+# VERTEX: 0x9C - 0xD89C
+# INDEX: 0xD89C - 0xEFFA
+
+# Working with the assumption that the vertex info is 48 bytes
+#   RGB - position + padded (pretty normal for shaders since they expect 8/16/32 byte boundaries)
+#   RGB - Normal + padded (again, pretty normal)
+#   RGBA/RGB - Tangent (+ padded if RGB)
+#   RGB - Binormal (only if tangent is rgb)
+#   RG - Texcoord
+#  ~ ~ ~
+#   Under these basic assumptions
+#       position: 4*(4 ~ 32) = 16
+#       blend_index: 4*(1 ~ 8) = 4
+#       blend_weight: 4*(2 ~ 16) = 8
+#       normal: 4*(2 ~ 16) = 8
+#       tangent 4*(2 ~ 16) = 8
+#       texture0:2*(2 ~ 16) = 4
+#           Really wish I had access to the shader code for this;
+#               Could try looking at the binaries (data blocks) to see if anything looks suspiciously like shaders
+#                   Doubt it would have 'magic' words though.
+#                       Maybe a chunk has the shader info? it would only be read once, so my guess would be main!
+
+
+
+
